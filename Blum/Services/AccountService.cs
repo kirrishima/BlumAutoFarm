@@ -10,8 +10,8 @@ namespace Blum.Services
     {
         private readonly string _filePath;
         private readonly Encryption _aes;
-        private static readonly Logger _logger = new Logger();
-        public static string DefaultAccountsFilepath = "accounts.dat";
+        private static readonly Logger _logger = new();
+        public static string DefaultAccountsFilepath = Path.Combine(TelegramSettings.settingsDirectory, "accounts.dat");
 
         public AccountService(Encryption aes, string? filePath = null)
         {
@@ -55,8 +55,6 @@ namespace Blum.Services
                 return new AccountsData(); ;
             }
 
-            ValidateAccountsData(accountsData);
-
             return accountsData;
         }
 
@@ -81,7 +79,7 @@ namespace Blum.Services
 
             accountsData.Accounts.Add(newAccount);
 
-            ValidateAccountsData(accountsData);
+            ValidateAccountsData(ref accountsData);
 
             SaveJsonFile(accountsData);
         }
@@ -102,7 +100,7 @@ namespace Blum.Services
 
             accountsData.Accounts.Remove(account);
 
-            ValidateAccountsData(accountsData);
+            ValidateAccountsData(ref accountsData);
 
             SaveJsonFile(accountsData);
         }
@@ -122,7 +120,7 @@ namespace Blum.Services
             }
         }
 
-        public static void ValidateAccountsData(AccountsData accountsData)
+        public static void ValidateAccountsData(ref AccountsData accountsData)
         {
             var validAccounts = new List<Account>();
 
@@ -150,10 +148,10 @@ namespace Blum.Services
 
             accountsData.Accounts = validAccounts;
 
-            if (accountsData.Accounts.Count == 0)
-            {
-                throw new BlumException("No valid accounts left after validation.");
-            }
+            //if (accountsData.Accounts.Count == 0)
+            //{
+            //    throw new BlumException("No valid accounts left after validation.");
+            //}
         }
 
         public static bool IsValidPhoneNumber(string phoneNumber, out string feedback)

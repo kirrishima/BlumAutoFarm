@@ -12,7 +12,8 @@
             Error
         }
 
-        private readonly LoggingAction _loggingAction;
+        protected readonly LoggingAction _loggingAction;
+
         public readonly Dictionary<LogMessageType, ConsoleColor> logColors = new()
         {
             { LogMessageType.Info,    ConsoleColor.Blue },
@@ -21,7 +22,7 @@
             { LogMessageType.Error,   ConsoleColor.DarkRed }
         };
 
-        private static readonly Dictionary<LogMessageType, string> LogMessageTypeName = new()
+        protected static readonly Dictionary<LogMessageType, string> LogMessageTypeName = new()
         {
             { LogMessageType.Info,    "INFO" },
             { LogMessageType.Success, "SUCCESS" },
@@ -30,12 +31,12 @@
         };
 
         public const string DefaultSeparator = " | ";
-        private readonly ConsoleColor _currentTimeColor = ConsoleColor.Green;
-        private static string _currentTime => DateTime.Now.ToString("MM-dd HH:mm:ss:ffff");
-        private static readonly int maxLogMessageLength = LogMessageTypeName.Values.Max(v => v.Length);
-        private readonly object _debugModeLock = new();
-        private bool _debugMode;
-        private static readonly object _consoleLock = new();
+        protected readonly ConsoleColor _currentTimeColor = ConsoleColor.Green;
+        protected static string _currentTime => DateTime.Now.ToString("MM-dd HH:mm:ss:ffff");
+        protected static readonly int maxLogMessageLength = LogMessageTypeName.Values.Max(v => v.Length);
+        protected readonly object _debugModeLock = new();
+        protected bool _debugMode;
+        protected static readonly object _consoleLock = new();
         public bool DebugMode
         {
             get
@@ -54,7 +55,7 @@
             }
         }
 
-        internal Logger(LoggingAction? loggingAction = null)
+        public Logger(LoggingAction? loggingAction = null)
         {
             _loggingAction = loggingAction ?? ((string message) =>
             {
@@ -65,7 +66,7 @@
             });
         }
 
-        private void SetConsoleColor(ConsoleColor color, Action action)
+        protected static void SetConsoleColor(ConsoleColor color, Action action)
         {
             lock (_consoleLock)
             {
@@ -76,13 +77,13 @@
             }
         }
 
-        private string FormatLogMessage(string message)
+        protected static string FormatLogMessage(string message)
         {
             int padding = (maxLogMessageLength - message.Length) / 2;
             return message.PadLeft(message.Length + padding).PadRight(maxLogMessageLength);
         }
 
-        private void Log(string message, LogMessageType type)
+        virtual protected void Log(string message, LogMessageType type)
         {
             lock (_consoleLock)
             {
@@ -97,7 +98,8 @@
                 _loggingAction("\n");
             }
         }
-        private void Log(LogMessageType type, string separator = " | ", params (string message, ConsoleColor? color)[] messages)
+
+        virtual protected void Log(LogMessageType type, string separator = " | ", params (string message, ConsoleColor? color)[] messages)
         {
             lock (_consoleLock)
             {
@@ -132,7 +134,13 @@
         {
             Log(type: type, separator: separator, messages: messages);
         }
-
+        public void Debug(LogMessageType type, string message)
+        {
+            if (DebugMode)
+            {
+                Log(type: type, separator: DefaultSeparator, messages: (message, null));
+            }
+        }
         public void Debug(LogMessageType type = LogMessageType.Info, string separator = DefaultSeparator, params (string message, ConsoleColor? color)[] messages)
         {
             if (DebugMode)
@@ -162,11 +170,14 @@
                 if (dictionary == null)
                     return;
 
-                Debug(messages: ("Dictionary pairs: key value", ConsoleColor.Yellow));
-                foreach (var kvp in dictionary)
+                if (DebugMode)
                 {
-                    string keyValueString = $"{kvp.Key}: {Convert.ToString(kvp.Value)}";
-                    Console.WriteLine(keyValueString);
+                    Debug(messages: ("Dictionary pairs: key value", ConsoleColor.Yellow));
+                    foreach (var kvp in dictionary)
+                    {
+                        string keyValueString = $"{kvp.Key}: {Convert.ToString(kvp.Value)}";
+                        Console.WriteLine(keyValueString);
+                    }
                 }
             }
         }

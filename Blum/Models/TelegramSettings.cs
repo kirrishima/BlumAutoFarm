@@ -23,13 +23,22 @@ namespace Blum.Models
         /// <summary>
         /// Filepath for config input/output
         /// </summary>
-        public static readonly string ConfigPath = "telegram_settings.json";
+        public static readonly string settingsDirectory = "Settings";
+        public static readonly string configPath = Path.Combine(settingsDirectory, "telegram_settings.json");
         private static readonly Logger logger = new();
         private static readonly JsonSerializerOptions options = new()
         {
             WriteIndented = true
         };
         private static readonly string _defaultJsonString = JsonSerializer.Serialize(new JsonSettings(), options);
+
+        static TelegramSettings()
+        {
+            if (!Directory.Exists(settingsDirectory))
+            {
+                Directory.CreateDirectory(settingsDirectory);
+            }
+        }
 
         /// <summary>
         /// Method that initializes all fields BEFORE access.
@@ -38,9 +47,9 @@ namespace Blum.Models
         /// <exception cref="BlumException"></exception>
         public static void ParseConfig()
         {
-            if (File.Exists(ConfigPath))
+            if (File.Exists(configPath))
             {
-                string jsonString = File.ReadAllText(ConfigPath);
+                string jsonString = File.ReadAllText(configPath);
 
                 try
                 {
@@ -72,34 +81,34 @@ namespace Blum.Models
         public static bool TryParseConfig(bool verbose = true)
         {
             logger.DebugMode = verbose;
-            if (File.Exists(ConfigPath))
+            if (File.Exists(configPath))
             {
-                string jsonString = File.ReadAllText(ConfigPath);
+                string jsonString = File.ReadAllText(configPath);
 
                 try
                 {
                     var settings = JsonSerializer.Deserialize<JsonSettings>(jsonString);
                     if (settings == null)
                     {
-                        logger.Debug(Logger.LogMessageType.Error, $"Failed to deserialize JSON from {ConfigPath}");
+                        logger.Debug(Logger.LogMessageType.Error, $"Failed to deserialize JSON from {configPath}");
                         return false;
                     }
 
                     if (settings.ApiId == null)
                     {
-                        logger.Debug(Logger.LogMessageType.Error, $"Missing 'api_id' in config {ConfigPath}");
+                        logger.Debug(Logger.LogMessageType.Error, $"Missing 'api_id' in config {configPath}");
                         return false;
                     }
 
                     if (!IsValidApiId(settings.ApiId))
                     {
-                        logger.Debug(Logger.LogMessageType.Error, $"Invalid 'api_id' in config {ConfigPath}");
+                        logger.Debug(Logger.LogMessageType.Error, $"Invalid 'api_id' in config {configPath}");
                         return false;
                     }
 
                     if (!IsValidApiHash(settings.ApiHash))
                     {
-                        logger.Debug(Logger.LogMessageType.Error, $"Missing or invalid 'api_hash' in config {ConfigPath}");
+                        logger.Debug(Logger.LogMessageType.Error, $"Missing or invalid 'api_hash' in config {configPath}");
                         return false;
                     }
 
@@ -118,7 +127,7 @@ namespace Blum.Models
             }
             else
             {
-                logger.Debug(Logger.LogMessageType.Error, $"{ConfigPath}: file not found");
+                logger.Debug(Logger.LogMessageType.Error, $"{configPath}: file not found");
                 logger.DebugMode = false;
                 return false;
             }
@@ -134,12 +143,12 @@ namespace Blum.Models
         /// <returns></returns>
         public static string CreateEmptyConfigFile()
         {
-            using (FileStream fs = File.Create(ConfigPath))
+            using (FileStream fs = File.Create(configPath))
             {
                 byte[] info = new UTF8Encoding(true).GetBytes(_defaultJsonString);
                 fs.Write(info, 0, info.Length);
             }
-            return Path.GetFullPath(ConfigPath);
+            return Path.GetFullPath(configPath);
         }
 
         public static string CreateConfigFileWithCurrentSettings()
@@ -147,12 +156,12 @@ namespace Blum.Models
             string jsonString = _defaultJsonString;
             if (IsValidApiHash(ApiHash) && IsValidApiId(ApiId))
                 jsonString = JsonSerializer.Serialize(new JsonSettings() { ApiId = ApiId, ApiHash = ApiHash, Proxy = Proxy }, options);
-            using (FileStream fs = File.Create(ConfigPath))
+            using (FileStream fs = File.Create(configPath))
             {
                 byte[] info = new UTF8Encoding(true).GetBytes(jsonString);
                 fs.Write(info, 0, info.Length);
             }
-            return Path.GetFullPath(ConfigPath);
+            return Path.GetFullPath(configPath);
         }
 
         /// <summary>

@@ -1,22 +1,60 @@
 ﻿using System.CommandLine;
+using System.CommandLine.Builder;
+using System.CommandLine.Parsing;
 using System.Diagnostics;
 using Blum.Exceptions;
 using Blum.Models;
 using Blum.Services;
 using Blum.Utilities;
-using System.CommandLine.Parsing;
 
 namespace Blum.Core
 {
     internal class ArgumentParser
     {
-        private static readonly Logger logger = new();
+        private class LoggerWithoutDateInOutput : Logger
+        {
+            override protected void Log(string message, LogMessageType type)
+            {
+                lock (_consoleLock)
+                {
+                    SetConsoleColor(logColors[type], () => _loggingAction(" " + LogMessageTypeName[type]));
+
+                    _loggingAction(" | ");
+                    _loggingAction(message);
+                    _loggingAction("\n");
+                }
+            }
+
+            override protected void Log(LogMessageType type, string separator = " | ", params (string message, ConsoleColor? color)[] messages)
+            {
+                lock (_consoleLock)
+                {
+                    SetConsoleColor(logColors[type], () => _loggingAction(" " + LogMessageTypeName[type]));
+                    _loggingAction(separator);
+
+                    for (int i = 0; i < messages.Length; i++)
+                    {
+                        var (message, color) = messages[i];
+                        if (color.HasValue)
+                            SetConsoleColor(color.Value, () => _loggingAction(message));
+                        else
+                            _loggingAction(message);
+
+                        if (i < messages.Length - 1)
+                            _loggingAction(separator);
+                    }
+                    _loggingAction("\n");
+                }
+            }
+        }
+
+        private static readonly LoggerWithoutDateInOutput logger = new();
 
         public static async Task ParseArgs(string[] args)
         {
             var apiIdOption = new Option<string>(
             name: "--api-id",
-            description: $"Sets the API ID for this session. Can be parsed from {TelegramSettings.ConfigPath}.",
+            description: $"Sets the API ID for this session. Can be parsed from '{TelegramSettings.configPath}'.",
             getDefaultValue: () => string.Empty
             )
             {
@@ -25,7 +63,7 @@ namespace Blum.Core
 
             var apiHashOption = new Option<string>(
                 name: "--api-hash",
-                description: $"Sets the API hash for this session. Can be parsed from {TelegramSettings.ConfigPath}.",
+                description: $"Sets the API hash for this session. Can be parsed from '{TelegramSettings.configPath}'.",
                 getDefaultValue: () => string.Empty
             )
             {
@@ -42,7 +80,7 @@ namespace Blum.Core
                 if (TelegramSettings.IsValidApiId(value ?? string.Empty))
                 {
                     TelegramSettings.ApiId = value;
-                    logger.Info($"API ID set to: {TelegramSettings.ApiId}");
+                    logger.Info($"API ID set to: '{TelegramSettings.ApiId}'");
                 }
             });
 
@@ -56,7 +94,7 @@ namespace Blum.Core
                 if (TelegramSettings.IsValidApiHash(value ?? string.Empty))
                 {
                     TelegramSettings.ApiHash = value;
-                    logger.Success($"API Hash set to: {TelegramSettings.ApiHash}");
+                    logger.Info($"API Hash set to '{TelegramSettings.ApiHash}'");
                 }
             });
 
@@ -71,21 +109,16 @@ namespace Blum.Core
                 ShowHelpCommand()
             };
 
-            rootCommand.SetHandler(async () =>
-                {
-                    await rootCommand.InvokeAsync(args);
-                });
+            var builder = new CommandLineBuilder(rootCommand).UseDefaults();
+            var parser = builder.Build();
 
             try
             {
-                await rootCommand.InvokeAsync(args);
+                await parser.InvokeAsync(args);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"An error occurred: {ex.Message}");
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadKey();
-                Environment.Exit(1);
+                PrintErrorAndExitWithCode($"An error occurred: {ex.Message}", 1);
             }
         }
 
@@ -93,7 +126,7 @@ namespace Blum.Core
         {
             var apiIdOption = new Option<string>(
                 name: "--api-id",
-                description: $"Sets the API ID for this session. Can be parsed from {TelegramSettings.ConfigPath} and will be saved to same path."
+                description: $"Sets the API ID for this session. Can be parsed from '{TelegramSettings.configPath}' and will be saved to same path."
             )
             {
                 IsRequired = false
@@ -101,13 +134,13 @@ namespace Blum.Core
 
             var apiHashOption = new Option<string>(
                 name: "--api-hash",
-                description: $"Sets the API hash for this session. Can be parsed from {TelegramSettings.ConfigPath} and will be saved to same path."
+                description: $"Sets the API hash for this session. Can be parsed from '{TelegramSettings.configPath}' and will be saved to same path."
             )
             {
                 IsRequired = false
             };
 
-            var command = new Command("--create-config", $"Generates an configuration file ({TelegramSettings.ConfigPath}), if it's not exists, with provided API ID and Hash. If none or only one of them provided, will be generated empty file")
+            var command = new Command("--create-config", $"Generates an configuration file ({TelegramSettings.configPath}), if it's not exists, with provided API ID and Hash. If none or only one of them provided, will be generated empty file")
             {
                 apiIdOption,
                 apiHashOption
@@ -125,7 +158,7 @@ namespace Blum.Core
                     {
                         if (!TelegramSettings.IsValidApiId(apiId))
                         {
-                            Console.WriteLine($"The provided API ID '{apiId}' is not valid.");
+                            logger.Warning($"The provided API ID '{apiId}' is not valid.");
                             return;
                         }
                         count++;
@@ -135,7 +168,7 @@ namespace Blum.Core
                     {
                         if (!TelegramSettings.IsValidApiHash(apiHash))
                         {
-                            Console.WriteLine($"The provided API hash '{apiHash}' is not valid.");
+                            logger.Warning($"The provided API hash '{apiHash}' is not valid.");
                             return;
                         }
                         count++;
@@ -144,21 +177,26 @@ namespace Blum.Core
                     if (count == 2)
                     {
                         TelegramSettings.ApiId = apiId;
-                        logger.Info($"API ID set to: {TelegramSettings.ApiId}");
+                        logger.Info($"API ID set to '{TelegramSettings.ApiId}'");
 
                         TelegramSettings.ApiHash = apiHash;
-                        logger.Info($"API Hash set to: {TelegramSettings.ApiHash}");
+                        logger.Info($"API Hash set to '{TelegramSettings.ApiHash}'");
 
                         HandleCreateConfig();
                     }
                     else
                     {
-                        logger.Warning($"{TelegramSettings.ConfigPath} was not created as not both valid API ID and API Hash were passed.");
+                        logger.Warning($"{TelegramSettings.configPath} was not created as not both valid API ID and API Hash were passed. You have to specify them both.\n" +
+                            $"Pro Tip: if you want to change only one of the parameters, you can specify them before all commands using the global options --api-id and --api-hash");
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"No parameters were provided. {TelegramSettings.ConfigPath} might be left unchanged or created empty");
+                    logger.Info($"No parameters were provided. {TelegramSettings.configPath} might be left unchanged or created empty");
+                    logger.Info($"API ID remained unchanged: '{TelegramSettings.ApiId}'");
+                    logger.Info($"API Hash  remained unchanged: '{TelegramSettings.ApiHash}'");
+
+                    HandleCreateConfig();
                 }
 
             }, apiIdOption, apiHashOption);
@@ -169,14 +207,14 @@ namespace Blum.Core
         private static Command AddAccountCommand()
         {
             var command = new Command("--add-account", "Adds an existing account with the provided details.");
-            command.SetHandler(async () =>
+            command.SetHandler(() =>
             {
                 if (string.IsNullOrEmpty(TelegramSettings.ApiHash))
                 {
-                    Console.WriteLine("API Hash is required. Please set it using --api-hash option.");
+                    logger.Info("API Hash is required. Please set it using --api-hash option.");
                     return;
                 }
-                await AddAccount();
+                AddAccount();
             });
             return command;
         }
@@ -196,7 +234,7 @@ namespace Blum.Core
             {
                 if (string.IsNullOrEmpty(TelegramSettings.ApiId) || string.IsNullOrEmpty(TelegramSettings.ApiHash))
                 {
-                    Console.WriteLine("API settings are not fully configured. Please provide --api-id and --api-hash.");
+                    logger.Info("API settings are not fully configured. Please provide --api-id and --api-hash.");
                     return;
                 }
                 await HandleStartFarm();
@@ -236,25 +274,18 @@ namespace Blum.Core
         private static async Task HandleStartFarm()
         {
             if (TelegramSettings.TryParseConfig())
-            {
                 await FarmingService.AutoStartBlumFarming();
-            }
             else
-            {
-                Console.WriteLine("Restart the program with valid config values");
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadKey();
-                Environment.Exit(0);
-            }
+                PrintErrorAndExitWithCode("Restart the program with valid config values", -1);
         }
 
-        private static async Task AddAccount()
+        private static void AddAccount()
         {
             try
             {
                 if (!TelegramSettings.IsValidApiHash(TelegramSettings.ApiHash))
                 {
-                    logger.Error($"\"{TelegramSettings.ApiHash}\" is not a valid api_hash.");
+                    logger.Error($"'{TelegramSettings.ApiHash}' is not a valid api_hash.");
                     return;
                 }
 
@@ -276,7 +307,7 @@ namespace Blum.Core
                     return;
                 }
 
-                logger.Info("Adding account...");
+                Console.WriteLine("Adding account...");
                 var aes = new Encryption(TelegramSettings.ApiHash);
                 var accountManager = new AccountService(aes);
                 accountManager.AddAccount(sessionName, phoneNumber);
@@ -301,7 +332,7 @@ namespace Blum.Core
                     return;
                 }
 
-                Console.WriteLine("Current valid accounts:");
+                Console.WriteLine("\nCurrent valid accounts:");
                 foreach (var account in accounts)
                 {
                     string input = account.PhoneNumber;

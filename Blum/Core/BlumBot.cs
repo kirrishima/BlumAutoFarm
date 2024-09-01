@@ -21,9 +21,9 @@ namespace Blum.Core
         protected RandomUtility.Random _random;
         protected static readonly string SessionsFolder = "sessions";
         private readonly StreamWriter _streamWriter;
-        private static readonly object _fileLock = new object();
-        private static readonly object _consoleLock = new object();
-        private static readonly object _configLock = new object();
+        private static readonly object _fileLock = new();
+        private static readonly object _consoleLock = new();
+        private static readonly object _configLock = new();
 
         protected readonly struct BlumUrls
         {
@@ -118,6 +118,7 @@ namespace Blum.Core
         public async Task PlayGameAsync(int playPasses)
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("PlayGameAsync()", null));
+            int fails = 0;
             while (playPasses > 0)
             {
                 try
@@ -134,7 +135,15 @@ namespace Blum.Core
                         _logger.Debug(Logger.LogMessageType.Error,
                             ($"gameId: {gameId}, is string: {gameId is string}, is Json String: {gameId is JsonElement j && j.ValueKind == JsonValueKind.String}",
                             ConsoleColor.Yellow));
-                        break;
+                        if (fails == 0)
+                        {
+                            _logger.Info("Waiting for 60 seconds before retry...");
+                            await Task.Delay(TimeSpan.FromSeconds(60));
+                            fails++;
+                            continue;
+                        }
+                        else
+                            break;
                     }
 
                     await Task.Delay(RandomDelayMilliseconds(Delay.ClaimGame));
@@ -167,6 +176,67 @@ namespace Blum.Core
                     await Task.Delay(RandomDelayMilliseconds(Delay.ErrorPlay));
                 }
             }
+        }
+
+        public async Task<object?> StartGameAsync()
+        {
+            _logger.Debug(Logger.LogMessageType.Warning, messages: ("StartGameAsync()", null));
+
+            var result = await _session.PostAsync(BlumUrls.GameStart);
+            var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(result.ResponseContent ?? "{}");
+            await Task.Delay(3000);
+
+            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"StartGameAsync raw response: {result.RawResponse}\nAs string: {result.ResponseContent}", null));
+            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"StartGameAsync responseJson:", null));
+            _logger.DebugDictionary(responseJson);
+
+            await Task.Delay(1000);
+
+            if (responseJson?.TryGetValue("gameId", out object? obj) == true)
+            {
+                if (obj is string strValue)
+                    return strValue;
+                else if (obj is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
+                    return jsonElement.GetString();
+            }
+
+            return null;
+        }
+
+        class JsonGame
+        {
+            [JsonPropertyName("gameId")]
+            public string? GameId { get; set; } = null;
+            [JsonPropertyName("points")]
+            public int? Points { get; set; } = null;
+        }
+
+        public async Task<(bool IsReturnedOK, string? ResponseAsText, int? Points)> ClaimGameAsync(string gameId)
+        {
+            _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimGameAsync()", null));
+            int points = RandomPoints();
+            JsonGame data = new()
+            {
+                GameId = gameId,
+                Points = points
+            };
+            var jsonData = JsonSerializer.Serialize(data);
+
+            var result = await _session.PostAsync(BlumUrls.GameClaim, jsonData);
+            if (result.RawResponse?.IsSuccessStatusCode != true)
+            {
+                await Task.Delay(1000);
+                result = await _session.PostAsync(BlumUrls.GameClaim, jsonData);
+            }
+
+            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"\nClaimGame raw response: {result.RawResponse}\nAs string: {result.ResponseContent}", null));
+
+            if (result.RawResponse == null || result.ResponseContent == null)
+                return (false, null, null);
+            else if (result.ResponseContent.Equals("OK"))
+                return (true, null, points);
+            else
+                return (false, result.ResponseContent, points);
         }
 
         private static string? ValidateGameId(object? gameId)
@@ -210,10 +280,7 @@ namespace Blum.Core
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("RefreshAsync()", null));
             var data = new { refresh = _refreshToken };
             var jsonData = JsonSerializer.Serialize(data);
-            _logger.Warning($"JSON DATA: {jsonData}");
-            // _session.RecreateRestClient();
             var response = await _session.PostAsync(BlumUrls.Refresh, jsonData);
-            Console.WriteLine($"response.ResponseContent: {response.ResponseContent}");
             var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(response.ResponseContent ?? "{}");
             var (r, s) = response;
 
@@ -227,10 +294,6 @@ namespace Blum.Core
                 {
                     _session.SetHeader("Authorization", $"Bearer {jsonElement.GetString()}");
                 }
-            }
-            else
-            {
-                Console.WriteLine("no access token");
             }
 
             if (responseJson?.TryGetValue("refresh", out obj) == true)
@@ -247,85 +310,8 @@ namespace Blum.Core
                     }
                 }
             }
-            else
-            {
-                Console.WriteLine("no refresh token");
-            }
+
             await Task.Delay(1000);
-            _logger.DebugMode = true;
-            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"RefreshAsync response: ", null));
-
-            _logger.DebugDictionary(responseJson);
-            _logger.DebugMode = false;
-        }
-
-        public async Task<object?> StartGameAsync()
-        {
-            _logger.Debug(Logger.LogMessageType.Warning, messages: ("StartGameAsync()", null));
-
-            var result = await _session.PostAsync(BlumUrls.GameStart);
-            var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(result.ResponseContent ?? "{}");
-            await Task.Delay(3000);
-            //_logger.DebugMode = true;
-            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"StartGameAsync raw response: {result.RawResponse}\nAs string: {result.ResponseContent}", null));
-            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"StartGameAsync responseJson:", null));
-            _logger.DebugDictionary(responseJson);
-            //_logger.DebugMode = false;
-
-            if (responseJson?.TryGetValue("gameId", out object? obj) == true)
-            {
-                if (obj is string strValue)
-                    return strValue;
-                else if (obj is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
-                    return jsonElement.GetString();
-            }
-            else if (responseJson?.TryGetValue("message", out obj) == true)
-            {
-                if (obj is string strValue)
-                    return strValue;
-                else if (obj is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
-                    return jsonElement.GetString();
-            }
-            await Task.Delay(1000);
-
-            return null;
-        }
-
-        class JsonGame
-        {
-            [JsonPropertyName("gameId")]
-            public string? GameId { get; set; } = null;
-            [JsonPropertyName("points")]
-            public int? Points { get; set; } = null;
-        }
-
-        public async Task<(bool IsReturnedOK, string? ResponseAsText, int? Points)> ClaimGameAsync(string gameId)
-        {
-            _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimGameAsync()", null));
-            int points = RandomPoints();
-            JsonGame data = new()
-            {
-                GameId = gameId,
-                Points = points
-            };
-            var jsonData = JsonSerializer.Serialize(data);
-
-            var result = await _session.PostAsync(BlumUrls.GameClaim, jsonData);
-            if (result.RawResponse?.IsSuccessStatusCode != true)
-            {
-                await Task.Delay(1000);
-                result = await _session.PostAsync(BlumUrls.GameClaim, jsonData);
-            }
-
-            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"\nClaimGame raw response: {result.RawResponse}\nAs string: {result.ResponseContent}", null));
-
-            if (result.RawResponse == null || result.ResponseContent == null)
-                return (false, null, null);
-            else if (result.ResponseContent == "OK")
-                return (true, null, points);
-            else
-                return (false, result.ResponseContent, points);
-
         }
 
         public class JsonClaim
@@ -368,11 +354,11 @@ namespace Blum.Core
                 }
             }
             await Task.Delay(1000);
-            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"\nClaim raw response: {result.RawResponse}\nAs string: {result.ResponseContent}", null));
+            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.RawResponse} | As string: {result.ResponseContent}", null));
             return (timestamp / 1000, balance);
         }
 
-        public async Task StartFarmingAsync()
+        public async Task<bool> StartFarmingAsync()
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("StartFarmingAsync()", null));
             var result = await _session.PostAsync(BlumUrls.FarmingStart);
@@ -381,9 +367,16 @@ namespace Blum.Core
                 await Task.Delay(1000);
                 await _session.PostAsync(BlumUrls.FarmingStart);
             }
-            await Task.Delay(1000);
 
-            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"\nStart raw response: {result.RawResponse}\nAs string: {result.ResponseContent}", null));
+            await Task.Delay(1000);
+            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Start raw response: {result.RawResponse} | As string: {result.ResponseContent}", null));
+
+            if (result.RawResponse?.IsSuccessStatusCode != true)
+            {
+                return false;
+            }
+            return true;
+
         }
 
         private class JsonAccessToken
@@ -407,7 +400,6 @@ namespace Blum.Core
             {
                 var jsonData = new { query = await GetTGWebDataAsync() };
                 var json = JsonSerializer.Serialize(jsonData);
-
                 var (RawResponse, ResponseContent) = await _session.PostAsync(BlumUrls.ProviderMiniApp, json);
 
                 _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"LoginAsync response: {ResponseContent}", null));
@@ -418,6 +410,7 @@ namespace Blum.Core
                 var accessToken = JsonSerializer.Deserialize<JsonAccessToken>(ResponseContent);
                 if (accessToken == null || accessToken.Token == null || string.IsNullOrWhiteSpace(accessToken.Token.Access) || string.IsNullOrWhiteSpace(accessToken.Token.Refresh))
                     return false;
+
                 _session.SetHeader("Authorization", string.Format("Bearer {0}", accessToken.Token.Access));
                 _refreshToken = accessToken.Token.Refresh;
 

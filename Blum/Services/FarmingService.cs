@@ -6,11 +6,10 @@ using static Blum.Utilities.RandomUtility.Random;
 
 namespace Blum.Services
 {
-
     internal class FarmingService
     {
         private static readonly Logger logger = new();
-        public static int maxPlays = 10;
+        public static int maxPlays = 7;
 
         public static async Task AutoStartBlumFarming()
         {
@@ -18,13 +17,19 @@ namespace Blum.Services
             {
                 var aes = new Encryption(TelegramSettings.ApiHash);
                 AccountService accountManager = new(aes);
-                var accounts = accountManager.GetAccounts().Accounts;
 
+                var accounts = accountManager.GetAccounts();
+                int accountTotal = accounts.Accounts.Count;
+
+                AccountService.ValidateAccountsData(ref accounts);
+
+                int validAccountsCount = accounts.Accounts.Count;
+
+                logger.Info($"Found {accountTotal} sessions. {(accountTotal > 0 ? $"Valid: {validAccountsCount}" : "")}");
                 var tasks = new List<Task>();
 
-                foreach (var account in accounts)
+                foreach (var account in accounts.Accounts)
                 {
-                    logger.Info($"Found session \"{account.SessionName}\".");
                     tasks.Add(Task.Run(() => StartBlumFarming(account.SessionName, account.PhoneNumber)));
                 }
                 await Task.WhenAll(tasks);
@@ -80,7 +85,7 @@ namespace Blum.Services
 
                                 if (playPasses > 0)
                                 {
-                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}", null));
+                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Limit: {maxPlays} per 8h", null));
                                     await blumBot.PlayGameAsync((playPasses ?? 0) > maxPlays ? maxPlays : (playPasses ?? 0));
                                 }
 
@@ -93,8 +98,10 @@ namespace Blum.Services
                                     (timestamp, startTime, endTime, playPasses) = await blumBot.GetBalanceAsync();
                                     if (startTime == null && endTime == null && maxTries > 0)
                                     {
-                                        await blumBot.StartFarmingAsync();
-                                        logger.Info((account, ConsoleColor.DarkCyan), ($"Started farming!", null));
+                                        if (await blumBot.StartFarmingAsync())
+                                            logger.Info((account, ConsoleColor.DarkCyan), ($"Started farming!", null));
+                                        else
+                                            logger.Warning((account, ConsoleColor.DarkCyan), ($"Couldn't start farming for unknown reason!", null));
                                         maxTries--;
                                     }
                                     else if (startTime != null && endTime != null && timestamp != null && timestamp >= endTime && maxTries > 0)
@@ -109,7 +116,10 @@ namespace Blum.Services
                                             else if (balance is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
                                                 strBalance = jsonElement.GetString();
                                         }
-                                        logger.Success((account, ConsoleColor.DarkCyan), ($"Claimed farming reward! GetBalanceAsync: {strBalance ?? "Null"}", null));
+                                        if (timestamp is null || balance is null)
+                                        {
+                                            logger.Warning((account, ConsoleColor.DarkCyan), ($"Seems that it's failed to claim the farm reward", null));
+                                        }
                                         maxTries--;
                                     }
                                     else if (endTime != null && timestamp != null)
@@ -132,7 +142,7 @@ namespace Blum.Services
                                         async Task Refreshing() => await blumBot.RefreshUsingTokenAsync();
 
                                         var cts = new CancellationTokenSource();
-                                        Task refreshingLoopTask = RefreshConnection(cts.Token, Refreshing);
+                                        Task refreshingLoopTask = RefreshConnection(Refreshing, cts.Token);
 
                                         await Task.Delay(milliseconds);
                                         cts.Cancel();
@@ -191,7 +201,7 @@ namespace Blum.Services
             }
         }
 
-        static async Task RefreshConnection(CancellationToken token, Func<Task> func)
+        private static async Task RefreshConnection(Func<Task> func, CancellationToken token)
         {
             try
             {
@@ -201,11 +211,11 @@ namespace Blum.Services
                         break;
                     else
                     {
-                        int x = RandomDelayMilliseconds(TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(35));
-                        string durationFormatted = string.Format("{0:D2} minutes, {1:D2} seconds",
-                        TimeSpan.FromMilliseconds(x).Minutes,
-                        TimeSpan.FromMilliseconds(x).Seconds);
-                        Console.WriteLine($"Before resfreh: {durationFormatted}");
+                        int x = RandomDelayMilliseconds(TimeSpan.FromMinutes(25), TimeSpan.FromMinutes(35));
+                        //string durationFormatted = string.Format("{0:D2} minutes, {1:D2} seconds",
+                        //TimeSpan.FromMilliseconds(x).Minutes,
+                        //TimeSpan.FromMilliseconds(x).Seconds);
+                        //Console.WriteLine($"Before resfreh: {durationFormatted}");
                         await Task.Delay(x, token);
                     }
                     await func();

@@ -29,7 +29,7 @@ namespace Blum.Models
         {
             AccountsData accounts = new();
             accounts.Accounts.Add(this);
-            AccountService.ValidateAccountsData(accounts);
+            AccountService.ValidateAccountsData(ref accounts);
 
             return accounts.Accounts.Count == 1;
 

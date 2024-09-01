@@ -1,5 +1,4 @@
-﻿using Blum.Utilities;
-using RestSharp;
+﻿using RestSharp;
 using System.Net;
 
 namespace Blum.Core
@@ -29,9 +28,6 @@ namespace Blum.Core
             };
 
             _client = new RestClient(_options);
-
-            //SetHeader("Connection", "keep-alive");
-            // SetHeader("Connection", "keep-alive");
         }
 
         public void Dispose()
@@ -42,7 +38,6 @@ namespace Blum.Core
 
         public void RecreateRestClient()
         {
-            Console.WriteLine("\nRecreateRestClient\n");
             var existingHeaders = _client.DefaultParameters;
 
             Dispose();
@@ -58,7 +53,6 @@ namespace Blum.Core
 
         public void SetHeader(string name, string value)
         {
-            Console.WriteLine($"\nSetHeader with: {name} : {value}\n");
             if (_auth.ContainsKey(name))
             {
                 _auth[name] = value;
@@ -67,7 +61,6 @@ namespace Blum.Core
             {
                 _auth.Add(name, value);
             }
-            // _client.AddDefaultHeader(name, value);
         }
 
         public void SetDeviceProfile(DeviceProfile newProfile)
@@ -78,7 +71,6 @@ namespace Blum.Core
 
         public async Task<string?> GetAsync(string url)
         {
-            Console.WriteLine($"\nGetAsync for {url}\n");
             try
             {
                 var request = new RestRequest(url, Method.Get);
@@ -95,9 +87,6 @@ namespace Blum.Core
 
         public async Task<(RestResponse? RawResponse, string? ResponseContent)> PostAsync(string url, string? jsonData = null)
         {
-            Console.WriteLine($"\nPostAsync for {url}\n");
-            Console.WriteLine($"JSON DATA A: \"{jsonData}\"");
-
             try
             {
                 var request = new RestRequest(url, Method.Post);
@@ -110,7 +99,6 @@ namespace Blum.Core
 
                 var response = await _client.ExecuteAsync(request);
                 var jsonString = response.IsSuccessful ? response.Content : null;
-                Console.WriteLine($"\nresponse.Content: {response.Content}\n");
                 return (response, jsonString);
             }
             catch (Exception e)
@@ -153,7 +141,7 @@ namespace Blum.Core
 
         public void SetTimeout(TimeSpan timeout)
         {
-            _options.MaxTimeout = (int)timeout.TotalMilliseconds;
+            _options.Timeout = timeout;
         }
     }
 }
