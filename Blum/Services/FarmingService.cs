@@ -139,7 +139,14 @@ namespace Blum.Services
 
                                         int milliseconds = sleepTimeSeconds > int.MaxValue / 1000 ? int.MaxValue : (int)(sleepTimeSeconds * 1000);
 
-                                        async Task Refreshing() => await blumBot.RefreshUsingTokenAsync();
+                                        async Task Refreshing()
+                                        {
+                                            if (!await blumBot.RefreshUsingTokenAsync())
+                                            {
+                                                await Task.Delay(TimeSpan.FromSeconds(1));
+                                                await blumBot.RefreshUsingTokenAsync();
+                                            }
+                                        };
 
                                         var cts = new CancellationTokenSource();
                                         Task refreshingLoopTask = RefreshConnection(Refreshing, cts.Token);
@@ -164,7 +171,7 @@ namespace Blum.Services
                                         logger.Error((account, ConsoleColor.DarkCyan), ($"Error in farming management: {ex.InnerException.Message}", null));
                                     }
                                 }
-                                await Task.Delay(10000);
+                                await Task.Delay(TimeSpan.FromSeconds(10));
                             }
                             catch (Exception ex)
                             {
@@ -187,7 +194,7 @@ namespace Blum.Services
                     finally
                     {
                         logger.Info((account, ConsoleColor.DarkCyan), ($"Reconnecting, 65 s", null));
-                        await Task.Delay(65000);
+                        await Task.Delay(TimeSpan.FromSeconds(65));
                     }
                 }
             }

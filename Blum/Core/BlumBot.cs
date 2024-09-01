@@ -275,7 +275,7 @@ namespace Blum.Core
             await LoginAsync();
         }
 
-        public async Task RefreshUsingTokenAsync()
+        public async Task<bool> RefreshUsingTokenAsync()
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("RefreshAsync()", null));
             var data = new { refresh = _refreshToken };
@@ -283,6 +283,7 @@ namespace Blum.Core
             var response = await _session.PostAsync(BlumUrls.Refresh, jsonData);
             var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(response.ResponseContent ?? "{}");
             var (r, s) = response;
+            bool success = false;
 
             if (responseJson?.TryGetValue("access", out object? obj) == true)
             {
@@ -294,6 +295,7 @@ namespace Blum.Core
                 {
                     _session.SetHeader("Authorization", $"Bearer {jsonElement.GetString()}");
                 }
+                success = true;
             }
 
             if (responseJson?.TryGetValue("refresh", out obj) == true)
@@ -309,9 +311,12 @@ namespace Blum.Core
                         _refreshToken = jsonElement.GetString();
                     }
                 }
+                success = true;
             }
 
             await Task.Delay(1000);
+
+            return success;
         }
 
         public class JsonClaim
