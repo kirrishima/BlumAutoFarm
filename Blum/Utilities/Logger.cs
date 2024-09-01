@@ -1,0 +1,235 @@
+﻿namespace Blum.Utilities
+{
+    internal class Logger
+    {
+        public delegate void LoggingAction(string message);
+
+        public enum LogMessageType
+        {
+            Info = 1,
+            Success,
+            Warning,
+            Error
+        }
+
+        private readonly LoggingAction _loggingAction;
+        public readonly Dictionary<LogMessageType, ConsoleColor> logColors = new()
+        {
+            { LogMessageType.Info,    ConsoleColor.Blue },
+            { LogMessageType.Success, ConsoleColor.Cyan },
+            { LogMessageType.Warning, ConsoleColor.DarkYellow },
+            { LogMessageType.Error,   ConsoleColor.DarkRed }
+        };
+
+        private static readonly Dictionary<LogMessageType, string> LogMessageTypeName = new()
+        {
+            { LogMessageType.Info,    "INFO" },
+            { LogMessageType.Success, "SUCCESS" },
+            { LogMessageType.Warning, "WARNING" },
+            { LogMessageType.Error,   "ERROR" }
+        };
+
+        public const string DefaultSeparator = " | ";
+        private readonly ConsoleColor _currentTimeColor = ConsoleColor.Green;
+        private static string _currentTime => DateTime.Now.ToString("MM-dd HH:mm:ss:ffff");
+        private static readonly int maxLogMessageLength = LogMessageTypeName.Values.Max(v => v.Length);
+        private readonly object _debugModeLock = new();
+        private bool _debugMode;
+        private static readonly object _consoleLock = new();
+        public bool DebugMode
+        {
+            get
+            {
+                lock (_debugModeLock)
+                {
+                    return _debugMode;
+                }
+            }
+            set
+            {
+                lock (_debugModeLock)
+                {
+                    _debugMode = value;
+                }
+            }
+        }
+
+        internal Logger(LoggingAction? loggingAction = null)
+        {
+            _loggingAction = loggingAction ?? ((string message) =>
+            {
+                lock (_consoleLock)
+                {
+                    Console.Write(message);
+                }
+            });
+        }
+
+        private void SetConsoleColor(ConsoleColor color, Action action)
+        {
+            lock (_consoleLock)
+            {
+                var originalColor = Console.ForegroundColor;
+                Console.ForegroundColor = color;
+                action();
+                Console.ForegroundColor = originalColor;
+            }
+        }
+
+        private string FormatLogMessage(string message)
+        {
+            int padding = (maxLogMessageLength - message.Length) / 2;
+            return message.PadLeft(message.Length + padding).PadRight(maxLogMessageLength);
+        }
+
+        private void Log(string message, LogMessageType type)
+        {
+            lock (_consoleLock)
+            {
+                SetConsoleColor(_currentTimeColor, () => _loggingAction(_currentTime));
+                _loggingAction(" | ");
+
+                string formattedMessage = FormatLogMessage(LogMessageTypeName[type]);
+                SetConsoleColor(logColors[type], () => _loggingAction(formattedMessage));
+
+                _loggingAction(" | ");
+                _loggingAction(message);
+                _loggingAction("\n");
+            }
+        }
+        private void Log(LogMessageType type, string separator = " | ", params (string message, ConsoleColor? color)[] messages)
+        {
+            lock (_consoleLock)
+            {
+                SetConsoleColor(_currentTimeColor, () => _loggingAction(_currentTime));
+                _loggingAction(separator);
+
+                string formattedMessage = FormatLogMessage(LogMessageTypeName[type]);
+                SetConsoleColor(logColors[type], () => _loggingAction(formattedMessage));
+                _loggingAction(separator);
+
+                for (int i = 0; i < messages.Length; i++)
+                {
+                    var (message, color) = messages[i];
+                    if (color.HasValue)
+                        SetConsoleColor(color.Value, () => _loggingAction(message));
+                    else
+                        _loggingAction(message);
+
+                    if (i < messages.Length - 1)
+                        _loggingAction(separator);
+                }
+                _loggingAction("\n");
+            }
+        }
+
+        public void LogMessage(string message, LogMessageType type = LogMessageType.Info, string separator = DefaultSeparator)
+        {
+            Log(type: type, separator: separator, messages: (message, null));
+        }
+
+        public void LogMessage(LogMessageType type = LogMessageType.Info, string separator = DefaultSeparator, params (string message, ConsoleColor? color)[] messages)
+        {
+            Log(type: type, separator: separator, messages: messages);
+        }
+
+        public void Debug(LogMessageType type = LogMessageType.Info, string separator = DefaultSeparator, params (string message, ConsoleColor? color)[] messages)
+        {
+            if (DebugMode)
+            {
+                Log(type: type, separator: separator, messages: messages);
+            }
+        }
+        public void Debug(LogMessageType type, params (string message, ConsoleColor? color)[] messages)
+        {
+            if (DebugMode)
+            {
+                Log(type: type, separator: DefaultSeparator, messages: messages);
+            }
+        }
+        public void Debug(params (string message, ConsoleColor? color)[] messages)
+        {
+            if (DebugMode)
+            {
+                Log(type: LogMessageType.Info, separator: DefaultSeparator, messages: messages);
+            }
+        }
+
+        public void DebugDictionary<T>(Dictionary<T, object>? dictionary) where T : IComparable
+        {
+            lock (_consoleLock)
+            {
+                if (dictionary == null)
+                    return;
+
+                Debug(messages: ("Dictionary pairs: key value", ConsoleColor.Yellow));
+                foreach (var kvp in dictionary)
+                {
+                    string keyValueString = $"{kvp.Key}: {Convert.ToString(kvp.Value)}";
+                    Console.WriteLine(keyValueString);
+                }
+            }
+        }
+
+        public void Info(string separator = DefaultSeparator, params (string message, ConsoleColor? color)[] messages)
+        {
+            Log(type: LogMessageType.Info, separator: separator, messages: messages);
+        }
+
+        public void Info(params (string message, ConsoleColor? color)[] messages)
+        {
+            Log(type: LogMessageType.Info, separator: DefaultSeparator, messages: messages);
+        }
+        public void Info(string message)
+        {
+            Log(message, LogMessageType.Info);
+        }
+
+
+        public void Success(string separator = DefaultSeparator, params (string message, ConsoleColor? color)[] messages)
+        {
+            Log(type: LogMessageType.Success, separator: separator, messages: messages);
+        }
+
+        public void Success(params (string message, ConsoleColor? color)[] messages)
+        {
+            Log(type: LogMessageType.Success, separator: DefaultSeparator, messages: messages);
+        }
+
+        public void Success(string message)
+        {
+            Log(message, LogMessageType.Success);
+        }
+
+
+        public void Error(string separator = DefaultSeparator, params (string message, ConsoleColor? color)[] messages)
+        {
+            Log(type: LogMessageType.Error, separator: separator, messages: messages);
+        }
+
+        public void Error(params (string message, ConsoleColor? color)[] messages)
+        {
+            Log(type: LogMessageType.Error, separator: DefaultSeparator, messages: messages);
+        }
+
+        public void Error(string message)
+        {
+            Log(message, LogMessageType.Error);
+        }
+
+        public void Warning(string separator = DefaultSeparator, params (string message, ConsoleColor? color)[] messages)
+        {
+            Log(type: LogMessageType.Warning, separator: separator, messages: messages);
+        }
+
+        public void Warning(params (string message, ConsoleColor? color)[] messages)
+        {
+            Log(type: LogMessageType.Warning, separator: DefaultSeparator, messages: messages);
+        }
+
+        public void Warning(string message)
+        {
+            Log(message, LogMessageType.Warning);
+        }
+    }
+}
