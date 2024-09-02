@@ -80,7 +80,7 @@ namespace Blum.Core
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Request error for {url}: {e.Message}");
+                //Console.WriteLine($"Request error for {url}: {e.Message}");
                 return null;
             }
         }
@@ -103,7 +103,7 @@ namespace Blum.Core
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Request error for {url}: {e.Message}");
+                //Console.WriteLine($"Request error for {url}: {e.Message}");
                 return (null, null);
             }
         }
@@ -113,28 +113,54 @@ namespace Blum.Core
             try
             {
                 var request = new RestRequest(url, Method.Put);
+                request.AddHeaders(_auth);
+
                 request.AddStringBody(jsonData, RestSharp.ContentType.Json);
                 var response = await _client.ExecuteAsync(request);
                 return response.IsSuccessful ? response.Content : null;
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Request error for {url}: {e.Message}");
+                //Console.WriteLine($"Request error for {url}: {e.Message}");
                 return null;
             }
         }
 
-        public async Task<string?> DeleteAsync(string url)
+        public async Task<string?> PatchAsync(string url, string jsonData)
         {
             try
             {
-                var request = new RestRequest(url, Method.Delete);
+                var request = new RestRequest(url, Method.Patch);
+                request.AddHeaders(_auth);
+
+                request.AddStringBody(jsonData, RestSharp.ContentType.Json);
                 var response = await _client.ExecuteAsync(request);
                 return response.IsSuccessful ? response.Content : null;
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Request error for {url}: {e.Message}");
+                //Console.WriteLine($"Request error for {url}: {e.Message}");
+                return null;
+            }
+        }
+
+        public async Task<string?> DeleteAsync(string url, string? jsonData = null)
+        {
+            try
+            {
+                var request = new RestRequest(url, Method.Delete);
+
+                if (jsonData != null)
+                {
+                    request.AddStringBody(jsonData, RestSharp.ContentType.Json);
+                }
+
+                var response = await _client.ExecuteAsync(request);
+                return response.IsSuccessful ? response.Content : null;
+            }
+            catch (Exception e)
+            {
+                //Console.WriteLine($"Request error for {url}: {e.Message}");
                 return null;
             }
         }
