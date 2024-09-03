@@ -8,11 +8,18 @@ namespace Blum.Core
         private RestClient _client;
         private RestClientOptions _options;
         private DeviceProfile _currentProfile;
-        private Dictionary<string, string> _auth = [];
+        private Dictionary<string, string> _headers = [];
+
+        private bool _disposed = false;
 
         public FakeWebClient(DeviceProfile? deviceProfile = null, string? proxyUri = null)
         {
             InitializeRestClient(deviceProfile, proxyUri);
+        }
+
+        ~FakeWebClient()
+        {
+            Dispose(false);
         }
 
         private void InitializeRestClient(DeviceProfile? deviceProfile, string? proxyUri)
@@ -32,8 +39,24 @@ namespace Blum.Core
 
         public void Dispose()
         {
-            _client.Dispose();
-            _options = null;
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+
+            if (disposing)
+            {
+                _client?.Dispose();
+                _options = null;
+                _currentProfile = null;
+                _headers.Clear();
+                _headers = null;
+            }
+
+            _disposed = true;
         }
 
         public void RecreateRestClient()
@@ -53,13 +76,13 @@ namespace Blum.Core
 
         public void SetHeader(string name, string value)
         {
-            if (_auth.ContainsKey(name))
+            if (_headers.ContainsKey(name))
             {
-                _auth[name] = value;
+                _headers[name] = value;
             }
             else
             {
-                _auth.Add(name, value);
+                _headers.Add(name, value);
             }
         }
 
@@ -69,75 +92,130 @@ namespace Blum.Core
             SetHeader("User-Agent", _currentProfile.UserAgent);
         }
 
-        public async Task<string?> GetAsync(string url)
+        public async Task<(RestResponse? RestResponse, string? ResponseContent, Exception? Exception)> TryGetAsync(string url)
         {
+            RestResponse? response = null;
             try
             {
                 var request = new RestRequest(url, Method.Get);
-                request.AddHeaders(_auth);
-                var response = await _client.ExecuteAsync(request);
-                return response.IsSuccessful ? response.Content : null;
+
+                if (_headers != null && _headers.Any())
+                    request.AddHeaders(_headers);
+
+                response = await _client.ExecuteAsync(request);
+
+                if (response.IsSuccessful)
+                    return (response, response.Content, null);
+                else
+                    return (response, null, null);
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Request error for {url}: {e.Message}");
-                return null;
+                return (response, null, e);
             }
         }
 
-        public async Task<(RestResponse? RawResponse, string? ResponseContent)> PostAsync(string url, string? jsonData = null)
+        public async Task<(RestResponse? restResponse, string? responseContent, Exception? exception)> TryPostAsync(string url, string? jsonData = null)
         {
+            RestResponse? response = null;
             try
             {
                 var request = new RestRequest(url, Method.Post);
-                request.AddHeaders(_auth);
+
+                if (_headers != null && _headers.Any())
+                    request.AddHeaders(_headers);
 
                 if (jsonData != null)
-                {
                     request.AddStringBody(jsonData, RestSharp.ContentType.Json);
-                }
 
-                var response = await _client.ExecuteAsync(request);
-                var jsonString = response.IsSuccessful ? response.Content : null;
-                return (response, jsonString);
+                response = await _client.ExecuteAsync(request);
+
+                if (response.IsSuccessful)
+                    return (response, response.Content, null);
+                else
+                    return (response, null, null);
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Request error for {url}: {e.Message}");
-                return (null, null);
+                return (response, null, e);
             }
         }
 
-        public async Task<string?> PutAsync(string url, string jsonData)
+        public async Task<(RestResponse? RestResponse, string? ResponseContent, Exception? Exception)> TryPutAsync(string url, string jsonData)
         {
+            RestResponse? response = null;
             try
             {
                 var request = new RestRequest(url, Method.Put);
+
+                if (_headers != null && _headers.Any())
+                {
+                    request.AddHeaders(_headers);
+                }
+
                 request.AddStringBody(jsonData, RestSharp.ContentType.Json);
-                var response = await _client.ExecuteAsync(request);
-                return response.IsSuccessful ? response.Content : null;
+
+                response = await _client.ExecuteAsync(request);
+
+                if (response.IsSuccessful)
+                    return (response, response.Content, null);
+                else
+                    return (response, null, null);
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Request error for {url}: {e.Message}");
-                return null;
+                return (response, null, e);
             }
         }
 
-        public async Task<string?> DeleteAsync(string url)
+        public async Task<(RestResponse? RestResponse, string? ResponseContent, Exception? Exception)> TryPatchAsync(string url, string jsonData)
         {
+            RestResponse? response = null;
             try
             {
-                var request = new RestRequest(url, Method.Delete);
-                var response = await _client.ExecuteAsync(request);
-                return response.IsSuccessful ? response.Content : null;
+                var request = new RestRequest(url, Method.Patch);
+
+                if (_headers != null && _headers.Any())
+                    request.AddHeaders(_headers);
+
+                request.AddStringBody(jsonData, RestSharp.ContentType.Json);
+
+                response = await _client.ExecuteAsync(request);
+
+                if (response.IsSuccessful)
+                    return (response, response.Content, null);
+                else
+                    return (response, null, null);
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Request error for {url}: {e.Message}");
-                return null;
+                return (response, null, e);
             }
         }
+
+        public async Task<(RestResponse? RestResponse, string? ResponseContent, Exception? Exception)> TryDeleteAsync(string url, string? jsonData = null)
+        {
+            RestResponse? response = null;
+            try
+            {
+                var request = new RestRequest(url, Method.Delete);
+
+                if (jsonData != null)
+                    request.AddStringBody(jsonData, RestSharp.ContentType.Json);
+
+                response = await _client.ExecuteAsync(request);
+
+                if (response.IsSuccessful)
+                    return (response, response.Content, null);
+                else
+                    return (response, null, null);
+            }
+            catch (Exception e)
+            {
+                return (response, null, e);
+            }
+        }
+
 
         public void SetTimeout(TimeSpan timeout)
         {

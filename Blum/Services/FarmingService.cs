@@ -1,5 +1,7 @@
-﻿using System.Text.Json;
+﻿using System.Security.Principal;
+using System.Text.Json;
 using Blum.Core;
+using Blum.Exceptions;
 using Blum.Models;
 using Blum.Utilities;
 using static Blum.Utilities.RandomUtility.Random;
@@ -9,7 +11,7 @@ namespace Blum.Services
     internal class FarmingService
     {
         private static readonly Logger logger = new();
-        public static int maxPlays = 7;
+        public static int MaxPlays { get; set; } = TelegramSettings.MaxPlays;
 
         public static async Task AutoStartBlumFarming()
         {
@@ -47,12 +49,15 @@ namespace Blum.Services
         public static async Task StartBlumFarming(string account, string phoneNumber)
         {
             logger.Info((account, ConsoleColor.DarkCyan), ("\u2665 Program is running, please be patient \u2665", null));
+
+            bool exitFlag = false;
+
             try
             {
                 RandomUtility.Random random = new();
                 FakeWebClient fakeWebClient = new();
 
-                while (true)
+                while (!exitFlag)
                 {
                     try
                     {
@@ -61,11 +66,11 @@ namespace Blum.Services
                         int maxTries = 2;
                         bool wasPrintedClaimInfo = false;
 
-                        await Task.Delay(RandomUtility.Random.RandomDelayMilliseconds(RandomUtility.Random.Delay.Account));
+                        await Task.Delay(RandomDelayMilliseconds(Delay.Account));
 
                         await blumBot.LoginAsync();
 
-                        while (true)
+                        while (!exitFlag)
                         {
                             try
                             {
@@ -85,8 +90,8 @@ namespace Blum.Services
 
                                 if (playPasses > 0)
                                 {
-                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Limit: {maxPlays} per 8h", null));
-                                    await blumBot.PlayGameAsync((playPasses ?? 0) > maxPlays ? maxPlays : (playPasses ?? 0));
+                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Limit: {MaxPlays} per 8h", null));
+                                    await blumBot.PlayGameAsync((playPasses ?? 0) > MaxPlays ? MaxPlays : (playPasses ?? 0));
                                 }
 
                                 await Task.Delay(RandomDelayMilliseconds(3, 10));
@@ -102,6 +107,7 @@ namespace Blum.Services
                                             logger.Info((account, ConsoleColor.DarkCyan), ($"Started farming!", null));
                                         else
                                             logger.Warning((account, ConsoleColor.DarkCyan), ($"Couldn't start farming for unknown reason!", null));
+
                                         maxTries--;
                                     }
                                     else if (startTime != null && endTime != null && timestamp != null && timestamp >= endTime && maxTries > 0)
@@ -109,17 +115,11 @@ namespace Blum.Services
                                         await blumBot.RefreshUsingTokenAsync();
                                         (timestamp, object? balance) = await blumBot.ClaimFarmAsync();
 
-                                        string? strBalance = null;
-                                        {
-                                            if (strBalance is string str)
-                                                strBalance = str;
-                                            else if (balance is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
-                                                strBalance = jsonElement.GetString();
-                                        }
-                                        if (timestamp is null || balance is null)
-                                        {
+                                        if (timestamp == null || balance == null)
                                             logger.Warning((account, ConsoleColor.DarkCyan), ($"Seems that it's failed to claim the farm reward", null));
-                                        }
+                                        else
+                                            logger.Success((account, ConsoleColor.DarkCyan), ($"Claimed the farm reward! balance: {balance}", null));
+
                                         maxTries--;
                                     }
                                     else if (endTime != null && timestamp != null)
@@ -141,10 +141,19 @@ namespace Blum.Services
 
                                         async Task Refreshing()
                                         {
-                                            if (!await blumBot.RefreshUsingTokenAsync())
+                                            try
                                             {
-                                                await Task.Delay(TimeSpan.FromSeconds(1));
-                                                await blumBot.RefreshUsingTokenAsync();
+                                                if (!await blumBot.RefreshUsingTokenAsync())
+                                                {
+                                                    await Task.Delay(TimeSpan.FromSeconds(1));
+                                                    await blumBot.RefreshUsingTokenAsync();
+                                                }
+                                            }
+                                            catch (BlumFatalError ex)
+                                            {
+                                                logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: {ex.StackTrace} | {ex.Message}", null));
+                                                logger.PrintAllExeceptionsData(ex.InnerException);
+                                                exitFlag = true;
                                             }
                                         };
 
@@ -163,6 +172,12 @@ namespace Blum.Services
                                         break;
                                     }
                                 }
+                                catch (BlumFatalError ex)
+                                {
+                                    logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: \nStack Trace: {ex.StackTrace} \nMessage: {ex.Message}", null));
+                                    logger.PrintAllExeceptionsData(ex.InnerException);
+                                    exitFlag = true;
+                                }
                                 catch (Exception ex)
                                 {
                                     logger.Error((account, ConsoleColor.DarkCyan), ($"Error in farming management: {ex.Message}", null));
@@ -172,6 +187,12 @@ namespace Blum.Services
                                     }
                                 }
                                 await Task.Delay(TimeSpan.FromSeconds(10));
+                            }
+                            catch (BlumFatalError ex)
+                            {
+                                logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: \nStack Trace: {ex.StackTrace} \nMessage: {ex.Message}", null));
+                                logger.PrintAllExeceptionsData(ex.InnerException);
+                                exitFlag = true;
                             }
                             catch (Exception ex)
                             {
@@ -183,6 +204,12 @@ namespace Blum.Services
                             }
                         }
                     }
+                    catch (BlumFatalError ex)
+                    {
+                        logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: \nStack Trace: {ex.StackTrace} \nMessage: {ex.Message}", null));
+                        logger.PrintAllExeceptionsData(ex.InnerException);
+                        exitFlag = true;
+                    }
                     catch (Exception ex)
                     {
                         logger.Error((account, ConsoleColor.DarkCyan), ($"Session error:  {ex.Message}", null));
@@ -193,10 +220,19 @@ namespace Blum.Services
                     }
                     finally
                     {
-                        logger.Info((account, ConsoleColor.DarkCyan), ($"Reconnecting, 65 s", null));
-                        await Task.Delay(TimeSpan.FromSeconds(65));
+                        if (!exitFlag)
+                        {
+                            logger.Info((account, ConsoleColor.DarkCyan), ($"Reconnecting, 65 s", null));
+                            await Task.Delay(TimeSpan.FromSeconds(65));
+                        }
                     }
                 }
+            }
+            catch (BlumFatalError ex)
+            {
+                logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: \nStack Trace: {ex.StackTrace} \nMessage: {ex.Message}", null));
+                logger.PrintAllExeceptionsData(ex.InnerException);
+                exitFlag = true;
             }
             catch (Exception ex)
             {

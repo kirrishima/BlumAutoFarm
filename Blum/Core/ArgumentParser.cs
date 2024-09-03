@@ -17,7 +17,7 @@ namespace Blum.Core
             {
                 lock (_consoleLock)
                 {
-                    SetConsoleColor(logColors[type], () => _loggingAction(" " + LogMessageTypeName[type]));
+                    SetConsoleColor(logColors[type], () => _loggingAction(LogMessageTypeName[type]));
 
                     _loggingAction(" | ");
                     _loggingAction(message);
@@ -29,7 +29,7 @@ namespace Blum.Core
             {
                 lock (_consoleLock)
                 {
-                    SetConsoleColor(logColors[type], () => _loggingAction(" " + LogMessageTypeName[type]));
+                    SetConsoleColor(logColors[type], () => _loggingAction(LogMessageTypeName[type]));
                     _loggingAction(separator);
 
                     for (int i = 0; i < messages.Length; i++)
@@ -95,6 +95,28 @@ namespace Blum.Core
                 {
                     TelegramSettings.ApiHash = value;
                     logger.Info($"API Hash set to '{TelegramSettings.ApiHash}'");
+                }
+            });
+
+            var maxPlaysOption = new Option<int>(
+            name: "--max-plays",
+            description: $"Sets the max passes amount used for playing games. Can be parsed from '{TelegramSettings.configPath}'.",
+            getDefaultValue: () => 7)
+            {
+                IsRequired = false
+            };
+
+            maxPlaysOption.AddValidator(result =>
+            {
+                var value = result.GetValueOrDefault<int>();
+                if (!TelegramSettings.IsValidMaxPlays(value))
+                {
+                    result.ErrorMessage = $"The provided API ID '{value}' is not valid.";
+                }
+                if (TelegramSettings.IsValidMaxPlays(value))
+                {
+                    TelegramSettings.MaxPlays = value;
+                    logger.Info($"API ID set to: '{TelegramSettings.ApiId}'");
                 }
             });
 
@@ -232,7 +254,7 @@ namespace Blum.Core
 
             command.SetHandler(async () =>
             {
-                if (string.IsNullOrEmpty(TelegramSettings.ApiId) || string.IsNullOrEmpty(TelegramSettings.ApiHash))
+                if (string.IsNullOrWhiteSpace(TelegramSettings.ApiId) || string.IsNullOrWhiteSpace(TelegramSettings.ApiHash))
                 {
                     logger.Info("API settings are not fully configured. Please provide --api-id and --api-hash.");
                     return;
@@ -273,10 +295,15 @@ namespace Blum.Core
 
         private static async Task HandleStartFarm()
         {
-            if (TelegramSettings.TryParseConfig())
+            try
+            {
+                TelegramSettings.ParseConfig();
                 await FarmingService.AutoStartBlumFarming();
-            else
-                PrintErrorAndExitWithCode("Restart the program with valid config values", -1);
+            }
+            catch (BlumException ex)
+            {
+                logger.Error($"{ex.Message} Restart the program with valid config values");
+            }
         }
 
         private static void AddAccount()

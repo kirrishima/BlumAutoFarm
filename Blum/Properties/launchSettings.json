@@ -1,7 +1,8 @@
 {
   "profiles": {
     "Blum": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "--create-config"
     }
   }
 }

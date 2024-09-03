@@ -125,6 +125,27 @@
             }
         }
 
+        public void PrintAllExeceptionsData(Exception? exception)
+        {
+            int level = 1;
+
+            while (exception != null)
+            {
+                _loggingAction(new string('-', Console.WindowWidth));
+
+                SetConsoleColor(ConsoleColor.Cyan, () => _loggingAction($"Error Nested Level: "));
+                _loggingAction($"{level++}\n");
+
+                SetConsoleColor(ConsoleColor.Cyan, () => _loggingAction($"Stack Trace: "));
+                _loggingAction($"\n{exception.StackTrace}\n");
+
+                SetConsoleColor(ConsoleColor.Cyan, () => _loggingAction($"Message: "));
+                _loggingAction($"{exception.Message}\n");
+
+                exception = exception.InnerException;
+            }
+        }
+
         public void LogMessage(string message, LogMessageType type = LogMessageType.Info, string separator = DefaultSeparator)
         {
             Log(type: type, separator: separator, messages: (message, null));
