@@ -1,5 +1,7 @@
-﻿using System.Text.Json;
+﻿using System.Security.Principal;
+using System.Text.Json;
 using Blum.Core;
+using Blum.Exceptions;
 using Blum.Models;
 using Blum.Utilities;
 using static Blum.Utilities.RandomUtility.Random;
@@ -47,12 +49,15 @@ namespace Blum.Services
         public static async Task StartBlumFarming(string account, string phoneNumber)
         {
             logger.Info((account, ConsoleColor.DarkCyan), ("\u2665 Program is running, please be patient \u2665", null));
+
+            bool exitFlag = false;
+
             try
             {
                 RandomUtility.Random random = new();
                 FakeWebClient fakeWebClient = new();
 
-                while (true)
+                while (!exitFlag)
                 {
                     try
                     {
@@ -61,11 +66,11 @@ namespace Blum.Services
                         int maxTries = 2;
                         bool wasPrintedClaimInfo = false;
 
-                        await Task.Delay(RandomUtility.Random.RandomDelayMilliseconds(RandomUtility.Random.Delay.Account));
+                        await Task.Delay(RandomDelayMilliseconds(Delay.Account));
 
                         await blumBot.LoginAsync();
 
-                        while (true)
+                        while (!exitFlag)
                         {
                             try
                             {
@@ -141,10 +146,19 @@ namespace Blum.Services
 
                                         async Task Refreshing()
                                         {
-                                            if (!await blumBot.RefreshUsingTokenAsync())
+                                            try
                                             {
-                                                await Task.Delay(TimeSpan.FromSeconds(1));
-                                                await blumBot.RefreshUsingTokenAsync();
+                                                if (!await blumBot.RefreshUsingTokenAsync())
+                                                {
+                                                    await Task.Delay(TimeSpan.FromSeconds(1));
+                                                    await blumBot.RefreshUsingTokenAsync();
+                                                }
+                                            }
+                                            catch (BlumFatalError ex)
+                                            {
+                                                logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: {ex.StackTrace} | {ex.Message}", null));
+                                                logger.PrintAllExeceptionsData(ex.InnerException);
+                                                exitFlag = true;
                                             }
                                         };
 
@@ -163,6 +177,12 @@ namespace Blum.Services
                                         break;
                                     }
                                 }
+                                catch (BlumFatalError ex)
+                                {
+                                    logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: {ex.StackTrace} | {ex.Message}", null));
+                                    logger.PrintAllExeceptionsData(ex.InnerException);
+                                    exitFlag = true;
+                                }
                                 catch (Exception ex)
                                 {
                                     logger.Error((account, ConsoleColor.DarkCyan), ($"Error in farming management: {ex.Message}", null));
@@ -172,6 +192,12 @@ namespace Blum.Services
                                     }
                                 }
                                 await Task.Delay(TimeSpan.FromSeconds(10));
+                            }
+                            catch (BlumFatalError ex)
+                            {
+                                logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: {ex.StackTrace} | {ex.Message}", null));
+                                logger.PrintAllExeceptionsData(ex.InnerException);
+                                exitFlag = true;
                             }
                             catch (Exception ex)
                             {
@@ -183,6 +209,12 @@ namespace Blum.Services
                             }
                         }
                     }
+                    catch (BlumFatalError ex)
+                    {
+                        logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: {ex.StackTrace} | {ex.Message}", null));
+                        logger.PrintAllExeceptionsData(ex.InnerException);
+                        exitFlag = true;
+                    }
                     catch (Exception ex)
                     {
                         logger.Error((account, ConsoleColor.DarkCyan), ($"Session error:  {ex.Message}", null));
@@ -193,10 +225,19 @@ namespace Blum.Services
                     }
                     finally
                     {
-                        logger.Info((account, ConsoleColor.DarkCyan), ($"Reconnecting, 65 s", null));
-                        await Task.Delay(TimeSpan.FromSeconds(65));
+                        if (!exitFlag)
+                        {
+                            logger.Info((account, ConsoleColor.DarkCyan), ($"Reconnecting, 65 s", null));
+                            await Task.Delay(TimeSpan.FromSeconds(65));
+                        }
                     }
                 }
+            }
+            catch (BlumFatalError ex)
+            {
+                logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: {ex.StackTrace} | {ex.Message}", null));
+                logger.PrintAllExeceptionsData(ex.InnerException);
+                exitFlag = true;
             }
             catch (Exception ex)
             {

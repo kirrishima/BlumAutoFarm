@@ -23,4 +23,14 @@
             }
         }
     }
+
+
+    public class BlumFatalError : BlumException
+    {
+        public BlumFatalError() : base("BlumFatalError occurred.") { }
+
+        public BlumFatalError(string message) : base(message) { }
+
+        public BlumFatalError(string message, Exception innerException) : base(message, innerException) { }
+    }
 }

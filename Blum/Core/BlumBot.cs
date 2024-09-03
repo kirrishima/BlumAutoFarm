@@ -105,24 +105,18 @@ namespace Blum.Core
             GC.SuppressFinalize(this);
         }
 
-        // Protected implementation of Dispose pattern
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed) return;
 
             if (disposing)
             {
-                // Free managed resources
                 _session?.Dispose();
                 _client?.Dispose();
                 _random = null;
                 _refreshToken = null;
                 _streamWriter?.Dispose();
-
-                // Additional cleanup if necessary
             }
-
-            // Free unmanaged resources (if any)
 
             _disposed = true;
         }
@@ -440,16 +434,21 @@ namespace Blum.Core
             {
                 var jsonData = new { query = await GetTGWebDataAsync() };
                 var json = JsonSerializer.Serialize(jsonData);
-                var (RawResponse, ResponseContent, _) = await _session.TryPostAsync(BlumUrls.ProviderMiniApp, json);
+                var (RawResponse, ResponseContent, exception) = await _session.TryPostAsync(BlumUrls.ProviderMiniApp + "a", json);
+
+                if (exception != null)
+                {
+                    throw new BlumFatalError($"Error while logging in blum", exception);
+                }
 
                 _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"LoginAsync response: {ResponseContent}", null));
 
                 if (string.IsNullOrWhiteSpace(ResponseContent))
-                    return false;
+                    throw new BlumFatalError($"Error while logging in blum: response content in empty");
 
                 var accessToken = JsonSerializer.Deserialize<JsonAccessToken>(ResponseContent);
                 if (accessToken == null || accessToken.Token == null || string.IsNullOrWhiteSpace(accessToken.Token.Access) || string.IsNullOrWhiteSpace(accessToken.Token.Refresh))
-                    return false;
+                    throw new BlumFatalError($"Error while logging in blum: no access token recived");
 
                 _session.SetHeader("Authorization", string.Format("Bearer {0}", accessToken.Token.Access));
                 _refreshToken = accessToken.Token.Refresh;
@@ -465,11 +464,11 @@ namespace Blum.Core
             }
             catch (Exception ex)
             {
-                string message = $"An error occurred during registration in telegram: {ex.Message}";
+                string message = $"An error occurred during logging in: {ex.Message}";
                 if (ex.InnerException != null)
                     message += "  |  " + ex.InnerException.Message;
                 _logger.Error((_accountName, ConsoleColor.DarkCyan), (message, null));
-                return false;
+                throw new BlumFatalError(message);
             }
         }
 
@@ -510,11 +509,11 @@ namespace Blum.Core
                 if (webViewResult is WebViewResultUrl webViewResultUrl)
                     return SplitAndProcessURL(webViewResultUrl.url);
                 else
-                    throw new BlumException($"Wrong result's data type parsing RequestWebView: got {webViewResult.GetType()}, expected {typeof(WebViewResultUrl)}");
+                    throw new BlumFatalError($"Wrong result's data type parsing RequestWebView: got {webViewResult.GetType()}, expected {typeof(WebViewResultUrl)}");
             }
             catch (Exception ex)
             {
-                throw new BlumException("Unexpected error while getting data from telegram", ex);
+                throw new BlumFatalError("Unexpected error while getting data from telegram", ex);
             }
         }
 
