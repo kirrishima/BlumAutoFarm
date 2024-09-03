@@ -20,6 +20,11 @@ namespace Blum.Models
         /// Proxy uri
         /// </summary>
         public static string? Proxy;
+
+        public static readonly (int Min, int Max) DefaultPointsRange = (250, 280);
+
+        public static (int Min, int Max) PointsRange = DefaultPointsRange;
+        public static int MaxPlays { get; set; } = 7;
         /// <summary>
         /// Filepath for config input/output
         /// </summary>
@@ -106,15 +111,47 @@ namespace Blum.Models
                         return false;
                     }
 
+                    if (settings.ApiHash == null)
+                    {
+                        logger.Debug(Logger.LogMessageType.Error, $"Missing 'api_hash' in config {configPath}");
+                        return false;
+                    }
+
                     if (!IsValidApiHash(settings.ApiHash))
                     {
-                        logger.Debug(Logger.LogMessageType.Error, $"Missing or invalid 'api_hash' in config {configPath}");
+                        logger.Debug(Logger.LogMessageType.Error, $"Invalid 'api_hash' in config {configPath}");
                         return false;
+                    }
+
+                    if (settings.farmingSettings != null)
+                    {
+                        var (x, y) = settings.farmingSettings.PointsRange;
+                        if (x <= 0 || x > DefaultPointsRange.Max)
+                        {
+                            logger.Debug(Logger.LogMessageType.Error, $"Invalid points range: min value must be from 1 to 280");
+                            return false;
+                        }
+                        if (y <= 0 || y > DefaultPointsRange.Max)
+                        {
+                            logger.Debug(Logger.LogMessageType.Error, $"Invalid points range: max value must be from 1 to 280");
+                            return false;
+                        }
+                        if (!IsValidMaxPlays(settings.farmingSettings.MaxPlays))
+                        {
+                            logger.Debug(Logger.LogMessageType.Error, $"Invaild max plays: {settings.farmingSettings.MaxPlays} < 0.");
+                            return false;
+                        }
                     }
 
                     ApiId = settings.ApiId;
                     ApiHash = settings.ApiHash;
                     Proxy = string.IsNullOrWhiteSpace(settings.Proxy) ? null : settings.Proxy;
+
+                    if (settings.farmingSettings != null)
+                    {
+                        PointsRange = settings.farmingSettings.PointsRange;
+                        MaxPlays = settings.farmingSettings.MaxPlays;
+                    }
 
                     logger.DebugMode = false;
                     return true;
@@ -137,6 +174,8 @@ namespace Blum.Models
 
         public static bool IsValidApiHash(string ApiHash) => !string.IsNullOrWhiteSpace(ApiHash);
 
+        public static bool IsValidMaxPlays(int maxPlays) => int.IsPositive(maxPlays);
+
         /// <summary>
         /// Method that creates an empty configuration file
         /// </summary>
@@ -155,7 +194,17 @@ namespace Blum.Models
         {
             string jsonString = _defaultJsonString;
             if (IsValidApiHash(ApiHash) && IsValidApiId(ApiId))
-                jsonString = JsonSerializer.Serialize(new JsonSettings() { ApiId = ApiId, ApiHash = ApiHash, Proxy = Proxy }, options);
+                jsonString = JsonSerializer.Serialize(new JsonSettings()
+                {
+                    ApiId = ApiId,
+                    ApiHash = ApiHash,
+                    Proxy = Proxy,
+                    farmingSettings = new JsonSettings.FarmingSettings
+                    {
+                        MaxPlays = MaxPlays,
+                        PointsRange = PointsRange
+                    }
+                }, options);
             using (FileStream fs = File.Create(configPath))
             {
                 byte[] info = new UTF8Encoding(true).GetBytes(jsonString);
@@ -169,6 +218,21 @@ namespace Blum.Models
         /// </summary>
         private class JsonSettings
         {
+            public class FarmingSettings
+            {
+                [JsonPropertyName("max_plays")]
+                public int MaxPlays { get; set; } = TelegramSettings.MaxPlays;
+
+                [JsonPropertyName("points_range")]
+                public (int Min, int Max) PointsRange { get; set; } = DefaultPointsRange;
+
+                public FarmingSettings()
+                {
+                    MaxPlays = TelegramSettings.MaxPlays;
+                    PointsRange = TelegramSettings.PointsRange;
+                }
+            }
+
             [JsonPropertyName("api_id")]
             public string ApiId { get; set; } = "";
 
@@ -177,6 +241,10 @@ namespace Blum.Models
 
             [JsonPropertyName("proxy")]
             public string? Proxy { get; set; } = null;
+
+            [JsonPropertyName("farming_settings")]
+            public FarmingSettings? farmingSettings = new();
+
         }
     }
 }

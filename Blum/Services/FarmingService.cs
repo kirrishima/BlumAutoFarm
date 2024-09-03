@@ -11,7 +11,7 @@ namespace Blum.Services
     internal class FarmingService
     {
         private static readonly Logger logger = new();
-        public static int maxPlays = 7;
+        public static int MaxPlays { get; set; } = 7;
 
         public static async Task AutoStartBlumFarming()
         {
@@ -90,8 +90,8 @@ namespace Blum.Services
 
                                 if (playPasses > 0)
                                 {
-                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Limit: {maxPlays} per 8h", null));
-                                    await blumBot.PlayGameAsync((playPasses ?? 0) > maxPlays ? maxPlays : (playPasses ?? 0));
+                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Limit: {MaxPlays} per 8h", null));
+                                    await blumBot.PlayGameAsync((playPasses ?? 0) > MaxPlays ? MaxPlays : (playPasses ?? 0));
                                 }
 
                                 await Task.Delay(RandomDelayMilliseconds(3, 10));

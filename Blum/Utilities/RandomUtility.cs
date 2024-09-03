@@ -1,10 +1,12 @@
-﻿namespace Blum.Utilities
+﻿using Blum.Models;
+
+namespace Blum.Utilities
 {
     public class RandomUtility
     {
         public class Random
         {
-            private static (int Min, int Max) Range { get; } = (250, 280);
+            public static (int Min, int Max) Range { get; set; } = TelegramSettings.PointsRange;
 
             public enum Delay
             {
