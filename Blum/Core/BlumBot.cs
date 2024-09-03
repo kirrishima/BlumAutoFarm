@@ -434,7 +434,7 @@ namespace Blum.Core
             {
                 var jsonData = new { query = await GetTGWebDataAsync() };
                 var json = JsonSerializer.Serialize(jsonData);
-                var (RawResponse, ResponseContent, exception) = await _session.TryPostAsync(BlumUrls.ProviderMiniApp + "a", json);
+                var (RawResponse, ResponseContent, exception) = await _session.TryPostAsync(BlumUrls.ProviderMiniApp, json);
 
                 if (exception != null)
                 {
@@ -465,10 +465,8 @@ namespace Blum.Core
             catch (Exception ex)
             {
                 string message = $"An error occurred during logging in: {ex.Message}";
-                if (ex.InnerException != null)
-                    message += "  |  " + ex.InnerException.Message;
-                _logger.Error((_accountName, ConsoleColor.DarkCyan), (message, null));
-                throw new BlumFatalError(message);
+                                _logger.Error((_accountName, ConsoleColor.DarkCyan), (message, null));
+                throw new BlumFatalError(message, ex.InnerException);
             }
         }
 

@@ -179,7 +179,7 @@ namespace Blum.Services
                                 }
                                 catch (BlumFatalError ex)
                                 {
-                                    logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: {ex.StackTrace} | {ex.Message}", null));
+                                    logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: \nStack Trace: {ex.StackTrace} \nMessage: {ex.Message}", null));
                                     logger.PrintAllExeceptionsData(ex.InnerException);
                                     exitFlag = true;
                                 }
@@ -195,7 +195,7 @@ namespace Blum.Services
                             }
                             catch (BlumFatalError ex)
                             {
-                                logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: {ex.StackTrace} | {ex.Message}", null));
+                                logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: \nStack Trace: {ex.StackTrace} \nMessage: {ex.Message}", null));
                                 logger.PrintAllExeceptionsData(ex.InnerException);
                                 exitFlag = true;
                             }
@@ -211,7 +211,7 @@ namespace Blum.Services
                     }
                     catch (BlumFatalError ex)
                     {
-                        logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: {ex.StackTrace} | {ex.Message}", null));
+                        logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: \nStack Trace: {ex.StackTrace} \nMessage: {ex.Message}", null));
                         logger.PrintAllExeceptionsData(ex.InnerException);
                         exitFlag = true;
                     }
@@ -235,7 +235,7 @@ namespace Blum.Services
             }
             catch (BlumFatalError ex)
             {
-                logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: {ex.StackTrace} | {ex.Message}", null));
+                logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: \nStack Trace: {ex.StackTrace} \nMessage: {ex.Message}", null));
                 logger.PrintAllExeceptionsData(ex.InnerException);
                 exitFlag = true;
             }

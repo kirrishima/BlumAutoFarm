@@ -131,16 +131,16 @@
 
             while (exception != null)
             {
+                _loggingAction(new string('-', Console.WindowWidth));
+
                 SetConsoleColor(ConsoleColor.Cyan, () => _loggingAction($"Error Nested Level: "));
                 _loggingAction($"{level++}\n");
 
                 SetConsoleColor(ConsoleColor.Cyan, () => _loggingAction($"Stack Trace: "));
-                _loggingAction($"{exception.StackTrace}\n");
+                _loggingAction($"\n{exception.StackTrace}\n");
 
                 SetConsoleColor(ConsoleColor.Cyan, () => _loggingAction($"Message: "));
                 _loggingAction($"{exception.Message}\n");
-
-                _loggingAction(new string('-', Console.WindowWidth));
 
                 exception = exception.InnerException;
             }
