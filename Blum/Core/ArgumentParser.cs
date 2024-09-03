@@ -254,7 +254,7 @@ namespace Blum.Core
 
             command.SetHandler(async () =>
             {
-                if (string.IsNullOrEmpty(TelegramSettings.ApiId) || string.IsNullOrEmpty(TelegramSettings.ApiHash))
+                if (string.IsNullOrWhiteSpace(TelegramSettings.ApiId) || string.IsNullOrWhiteSpace(TelegramSettings.ApiHash))
                 {
                     logger.Info("API settings are not fully configured. Please provide --api-id and --api-hash.");
                     return;
@@ -295,10 +295,15 @@ namespace Blum.Core
 
         private static async Task HandleStartFarm()
         {
-            if (TelegramSettings.TryParseConfig())
+            try
+            {
+                TelegramSettings.ParseConfig();
                 await FarmingService.AutoStartBlumFarming();
-            else
-                PrintErrorAndExitWithCode("Restart the program with valid config values", -1);
+            }
+            catch (BlumException ex)
+            {
+                logger.Error($"{ex.Message} Restart the program with valid config values");
+            }
         }
 
         private static void AddAccount()

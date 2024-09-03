@@ -11,7 +11,7 @@ namespace Blum.Services
     internal class FarmingService
     {
         private static readonly Logger logger = new();
-        public static int MaxPlays { get; set; } = 7;
+        public static int MaxPlays { get; set; } = TelegramSettings.MaxPlays;
 
         public static async Task AutoStartBlumFarming()
         {
@@ -107,6 +107,7 @@ namespace Blum.Services
                                             logger.Info((account, ConsoleColor.DarkCyan), ($"Started farming!", null));
                                         else
                                             logger.Warning((account, ConsoleColor.DarkCyan), ($"Couldn't start farming for unknown reason!", null));
+
                                         maxTries--;
                                     }
                                     else if (startTime != null && endTime != null && timestamp != null && timestamp >= endTime && maxTries > 0)
@@ -114,17 +115,11 @@ namespace Blum.Services
                                         await blumBot.RefreshUsingTokenAsync();
                                         (timestamp, object? balance) = await blumBot.ClaimFarmAsync();
 
-                                        string? strBalance = null;
-                                        {
-                                            if (strBalance is string str)
-                                                strBalance = str;
-                                            else if (balance is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
-                                                strBalance = jsonElement.GetString();
-                                        }
-                                        if (timestamp is null || balance is null)
-                                        {
+                                        if (timestamp == null || balance == null)
                                             logger.Warning((account, ConsoleColor.DarkCyan), ($"Seems that it's failed to claim the farm reward", null));
-                                        }
+                                        else
+                                            logger.Success((account, ConsoleColor.DarkCyan), ($"Claimed the farm reward! balance: {balance}", null));
+
                                         maxTries--;
                                     }
                                     else if (endTime != null && timestamp != null)

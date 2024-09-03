@@ -357,7 +357,7 @@ namespace Blum.Core
             public object? AvailableBalance { get; set; } = null;
         }
 
-        public async Task<(long?, object?)> ClaimFarmAsync()
+        public async Task<(long?, string?)> ClaimFarmAsync()
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimFarmAsync()", null));
             var result = await _session.TryPostAsync(BlumUrls.FarmingClaim);
@@ -374,22 +374,16 @@ namespace Blum.Core
 
             long? timestamp = null;
             object? balance = null;
+
             response?.TryGetValue("availableBalance", out balance);
 
             if (response?.TryGetValue("timestamp", out object? value) == true)
             {
-                if (value is long val)
-                {
-                    timestamp = val;
-                }
-                else if (value is long?)
-                {
-                    timestamp = (long?)value;
-                }
+                timestamp = value as long?;
             }
             await Task.Delay(1000);
             _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
-            return (timestamp / 1000, balance);
+            return (timestamp / 1000, balance as string);
         }
 
         public async Task<bool> StartFarmingAsync()
@@ -465,7 +459,7 @@ namespace Blum.Core
             catch (Exception ex)
             {
                 string message = $"An error occurred during logging in: {ex.Message}";
-                                _logger.Error((_accountName, ConsoleColor.DarkCyan), (message, null));
+                _logger.Error((_accountName, ConsoleColor.DarkCyan), (message, null));
                 throw new BlumFatalError(message, ex.InnerException);
             }
         }
