@@ -288,6 +288,11 @@ namespace Blum.Core
             try
             {
                 var response = await _session.TryGetAsync(BlumUrls.ClaimDailyReward);
+                if (response.RestResponse?.IsSuccessStatusCode == true)
+                {
+                    await Task.Delay(1000);
+                    response = await _session.TryPostAsync(BlumUrls.ClaimDailyReward);
+                }
                 responseText = response.ResponseContent;
                 await Task.Delay(1000);
                 return responseText == "OK" ? (true, null) : (false, responseText);
