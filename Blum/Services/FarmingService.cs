@@ -90,8 +90,11 @@ namespace Blum.Services
 
                                 if (playPasses > 0)
                                 {
-                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Limit: {MaxPlays} per 8h", null));
-                                    await blumBot.PlayGameAsync((playPasses ?? 0) > MaxPlays ? MaxPlays : (playPasses ?? 0));
+                                    int usePasses = (playPasses ?? 0) > MaxPlays ? MaxPlays : (playPasses ?? 0);
+                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Will be used: {usePasses}, " +
+                                        $"as limit is set to {playPasses}", null));
+
+                                    await blumBot.PlayGameAsync(usePasses);
                                 }
 
                                 await Task.Delay(RandomDelayMilliseconds(3, 10));
@@ -113,7 +116,8 @@ namespace Blum.Services
                                     else if (startTime != null && endTime != null && timestamp != null && timestamp >= endTime && maxTries > 0)
                                     {
                                         await blumBot.RefreshUsingTokenAsync();
-                                        (timestamp, object? balance) = await blumBot.ClaimFarmAsync();
+
+                                        var (claimTimestamp, balance) = await blumBot.ClaimFarmAsync();
 
                                         if (timestamp == null || balance == null)
                                             logger.Warning((account, ConsoleColor.DarkCyan), ($"Seems that it's failed to claim the farm reward", null));
