@@ -3,6 +3,7 @@ using Blum.Utilities;
 using Blum.Models;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Security.Principal;
 
 namespace Blum.Services
 {
@@ -11,7 +12,7 @@ namespace Blum.Services
         private readonly string _filePath;
         private readonly Encryption _aes;
         private static readonly Logger _logger = new();
-        public static string DefaultAccountsFilepath = Path.Combine(TelegramSettings.settingsDirectory, "accounts.dat");
+        public static readonly string DefaultAccountsFilepath = Path.Combine(TelegramSettings.settingsDirectory, "accounts.dat");
 
         public AccountService(Encryption aes, string? filePath = null)
         {
@@ -32,7 +33,7 @@ namespace Blum.Services
                 string encryptedJson = File.ReadAllText(_filePath);
                 jsonContent = _aes.Decrypt(encryptedJson);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 _logger.Error("Error reading JSON file.");
                 return new AccountsData();
@@ -58,7 +59,7 @@ namespace Blum.Services
             return accountsData;
         }
 
-        public void AddAccount(string sessionName, string phoneNumber)
+        public string AddAccount(string sessionName, string phoneNumber)
         {
             BlumException.ThrowIfNull(phoneNumber, nameof(phoneNumber));
             BlumException.ThrowIfNull(sessionName, nameof(sessionName));
@@ -70,6 +71,7 @@ namespace Blum.Services
                 throw new BlumException("Session name is not valid.");
 
             var accountsData = GetAccounts();
+            ValidateAccountsData(ref accountsData);
 
             var newAccount = new Account
             {
@@ -77,14 +79,32 @@ namespace Blum.Services
                 SessionName = sessionName
             };
 
-            accountsData.Accounts.Add(newAccount);
+            if (accountsData.Accounts.Contains(newAccount))
+            {
+                return "Account with this credentials already exists";
+            }
 
+            foreach (var item in accountsData.Accounts)
+            {
+                if (item.SessionName == sessionName)
+                {
+                    return $"Account with name {sessionName} already exists";
+                }
+                if (item.PhoneNumber.Replace("+", "") == phoneNumber.Replace("+", ""))
+                {
+                    return $"Account with phone number {phoneNumber} already exists";
+                }
+            }
+
+            accountsData.Accounts.Add(newAccount);
             ValidateAccountsData(ref accountsData);
 
             SaveJsonFile(accountsData);
+
+            return "Account added!";
         }
 
-        public void DeleteAccount(string sessionName, string phoneNumber)
+        public string DeleteAccount(string sessionName, string phoneNumber)
         {
             var accountsData = GetAccounts();
             Account account = new Account
@@ -95,7 +115,7 @@ namespace Blum.Services
 
             if (!accountsData.Accounts.Contains(account))
             {
-                throw new BlumException($"Account with name {sessionName} not found in {_filePath}");
+                return $"Account with name {sessionName} and phone number {phoneNumber} not found in {_filePath}";
             }
 
             accountsData.Accounts.Remove(account);
@@ -103,6 +123,7 @@ namespace Blum.Services
             ValidateAccountsData(ref accountsData);
 
             SaveJsonFile(accountsData);
+            return $"Account {sessionName} deleted successfully";
         }
 
         private void SaveJsonFile(AccountsData accountsData)
