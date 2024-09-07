@@ -93,7 +93,7 @@ namespace Blum.Services
                                 {
                                     int usePasses = (playPasses ?? 0) > MaxPlays ? MaxPlays : (playPasses ?? 0);
                                     logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Will be used: {usePasses}, " +
-                                        $"as limit is set to {playPasses}", null));
+                                        $"as limit is set to {MaxPlays}", null));
 
                                     await blumBot.PlayGameAsync(usePasses);
                                 }
