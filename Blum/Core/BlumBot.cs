@@ -32,8 +32,8 @@ namespace Blum.Core
             /// <summary>https://game-domain.blum.codes/api/v1/user/balance</summary>
             public static readonly string Balance = "https://game-domain.blum.codes/api/v1/user/balance";
 
-            /// <summary>https://gateway.blum.codes/v1/auth/provider/PROVIDER_TELEGRAM_MINI_APP</summary>
-            public static readonly string ProviderMiniApp = "https://gateway.blum.codes/v1/auth/provider/PROVIDER_TELEGRAM_MINI_APP";
+            /// <summary>https://user-domain.blum.codes/api/v1/auth/provider/PROVIDER_TELEGRAM_MINI_APP</summary>
+            public static readonly string ProviderMiniApp = "https://user-domain.blum.codes/api/v1/auth/provider/PROVIDER_TELEGRAM_MINI_APP";
 
             /// <summary>https://game-domain.blum.codes/api/v1/farming/claim</summary>
             public static readonly string FarmingClaim = "https://game-domain.blum.codes/api/v1/farming/claim";
@@ -364,19 +364,24 @@ namespace Blum.Core
 
         public async Task<(long?, string?)> ClaimFarmAsync()
         {
+            _logger.DebugMode = true;
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimFarmAsync()", null));
             var result = await _session.TryPostAsync(BlumUrls.FarmingClaim);
+            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
             if (result.restResponse?.IsSuccessStatusCode != true)
             {
+                _logger.Debug((_accountName, ConsoleColor.DarkCyan), ("ClaimFarmAsync request failed, retry...", null));
                 await Task.Delay(1000);
                 result = await _session.TryPostAsync(BlumUrls.FarmingClaim);
+                _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
             }
 
-            if (result.restResponse?.IsSuccessStatusCode != true || string.IsNullOrWhiteSpace(result.responseContent))
+            if (string.IsNullOrWhiteSpace(result.responseContent))
                 return (null, null);
 
             var response = JsonSerializer.Deserialize<Dictionary<string, object>>(result.responseContent);
-
+            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"ClaimFarmAsync response deserialized", null));
+            _logger.DebugDictionary(response);
             long? timestamp = null;
             object? balance = null;
 
@@ -387,7 +392,6 @@ namespace Blum.Core
                 timestamp = value as long?;
             }
             await Task.Delay(1000);
-            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
             return (timestamp / 1000, balance as string);
         }
 
@@ -435,19 +439,29 @@ namespace Blum.Core
                 var json = JsonSerializer.Serialize(jsonData);
                 var (RawResponse, ResponseContent, exception) = await _session.TryPostAsync(BlumUrls.ProviderMiniApp, json);
 
-                if (exception != null)
+                if (RawResponse?.IsSuccessful != true || exception != null)
                 {
-                    throw new BlumFatalError($"Error while logging in blum", exception);
+                    await Task.Delay(3000);
+                    (RawResponse, ResponseContent, exception) = await _session.TryPostAsync(BlumUrls.ProviderMiniApp, json);
+                }
+
+                if (RawResponse?.IsSuccessful != true || exception != null)
+                {
+                    throw new BlumFatalError($"Error while logging in blum: request to blum api failed.", exception);
                 }
 
                 _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"LoginAsync response: {ResponseContent}", null));
 
                 if (string.IsNullOrWhiteSpace(ResponseContent))
-                    throw new BlumFatalError($"Error while logging in blum: response content in empty");
+                {
+                    throw new BlumFatalError($"Error while logging in blum: response content is empty");
+                }
 
                 var accessToken = JsonSerializer.Deserialize<JsonAccessToken>(ResponseContent);
                 if (accessToken == null || accessToken.Token == null || string.IsNullOrWhiteSpace(accessToken.Token.Access) || string.IsNullOrWhiteSpace(accessToken.Token.Refresh))
+                {
                     throw new BlumFatalError($"Error while logging in blum: no access token recived");
+                }
 
                 _session.SetHeader("Authorization", string.Format("Bearer {0}", accessToken.Token.Access));
                 _refreshToken = accessToken.Token.Refresh;
@@ -457,7 +471,6 @@ namespace Blum.Core
                     ($"LoginAsync Token.Access: {accessToken.Token.Access}", null),
                     ($"LoginAsync Token.RefreshAsync: {accessToken.Token.Refresh}", null)
                     );
-                await Task.Delay(1000);
 
                 return true;
             }
