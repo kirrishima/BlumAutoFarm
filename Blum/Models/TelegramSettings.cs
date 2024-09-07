@@ -29,7 +29,7 @@ namespace Blum.Models
         /// <summary>
         /// Filepath for config input/output
         /// </summary>
-        public static readonly string settingsDirectory = "Settings";
+        public static readonly string settingsDirectory = "telegram";
         public static readonly string configPath = Path.Combine(settingsDirectory, "telegram_settings.json");
         //private static readonly ;
         private static readonly JsonSerializerOptions options = new()

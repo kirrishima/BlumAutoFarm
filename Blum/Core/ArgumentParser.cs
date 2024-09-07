@@ -334,10 +334,9 @@ namespace Blum.Core
                     return;
                 }
 
-                Console.WriteLine("Adding account...");
                 var aes = new Encryption(TelegramSettings.ApiHash);
                 var accountManager = new AccountService(aes);
-                accountManager.AddAccount(sessionName, phoneNumber);
+                Console.WriteLine(accountManager.AddAccount(sessionName, phoneNumber));
             }
             catch (Exception ex)
             {
@@ -359,7 +358,7 @@ namespace Blum.Core
                     return;
                 }
 
-                Console.WriteLine("\nCurrent valid accounts:");
+                Console.WriteLine("\nCurrent accounts:");
                 foreach (var account in accounts)
                 {
                     string input = account.PhoneNumber;
@@ -373,7 +372,10 @@ namespace Blum.Core
 
                 Account? foundAccount = accounts.Find((Account x) => x.SessionName == sessionName);
                 if (foundAccount != null)
-                    accountManager.DeleteAccount(foundAccount.SessionName ?? "", foundAccount.PhoneNumber ?? "");
+                {
+                    string result = accountManager.DeleteAccount(foundAccount.SessionName ?? "", foundAccount.PhoneNumber ?? "");
+                    Console.WriteLine(result);
+                }
             }
             catch (Exception ex)
             {

@@ -74,6 +74,7 @@ namespace Blum.Services
                         {
                             try
                             {
+                                await Task.Delay(1000);
                                 var msg = await blumBot.ClaimDailyRewardAsync();
                                 if (msg.Item1)
                                 {
@@ -90,17 +91,24 @@ namespace Blum.Services
 
                                 if (playPasses > 0)
                                 {
-                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Limit: {MaxPlays} per 8h", null));
-                                    await blumBot.PlayGameAsync((playPasses ?? 0) > MaxPlays ? MaxPlays : (playPasses ?? 0));
+                                    int usePasses = (playPasses ?? 0) > MaxPlays ? MaxPlays : (playPasses ?? 0);
+                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Will be used: {usePasses}, " +
+                                        $"as limit is set to {MaxPlays}", null));
+
+                                    await blumBot.PlayGameAsync(usePasses);
                                 }
 
                                 await Task.Delay(RandomDelayMilliseconds(3, 10));
 
                                 try
                                 {
-                                    timestamp = startTime = endTime = playPasses = null;
+                                    await Task.Delay(1000);
 
+                                    timestamp = startTime = endTime = playPasses = null;
                                     (timestamp, startTime, endTime, playPasses) = await blumBot.GetBalanceAsync();
+
+                                    await Task.Delay(1000);
+
                                     if (startTime == null && endTime == null && maxTries > 0)
                                     {
                                         if (await blumBot.StartFarmingAsync())
@@ -113,7 +121,10 @@ namespace Blum.Services
                                     else if (startTime != null && endTime != null && timestamp != null && timestamp >= endTime && maxTries > 0)
                                     {
                                         await blumBot.RefreshUsingTokenAsync();
-                                        (timestamp, object? balance) = await blumBot.ClaimFarmAsync();
+
+                                        await Task.Delay(1000);
+
+                                        var (claimTimestamp, balance) = await blumBot.ClaimFarmAsync();
 
                                         if (timestamp == null || balance == null)
                                             logger.Warning((account, ConsoleColor.DarkCyan), ($"Seems that it's failed to claim the farm reward", null));

@@ -86,10 +86,51 @@ namespace Blum.Core
             }
         }
 
+        public void ClearHeaders(params string[] names)
+        {
+            if (names.Length == 0)
+            {
+                _headers.Clear();
+            }
+            else
+            {
+                foreach (var name in names)
+                {
+                    if (_headers.ContainsKey(name))
+                    {
+                        _headers.Remove(name);
+                    }
+                }
+            }
+        }
+
         public void SetDeviceProfile(DeviceProfile newProfile)
         {
             _currentProfile = newProfile;
             SetHeader("User-Agent", _currentProfile.UserAgent);
+        }
+
+        public async Task<(RestResponse? RestResponse, string? ResponseContent, Exception? Exception)> TryOptionsAsync(string url)
+        {
+            RestResponse? response = null;
+            try
+            {
+                var request = new RestRequest(url, Method.Options);
+
+                if (_headers != null && _headers.Any())
+                    request.AddHeaders(_headers);
+
+                response = await _client.ExecuteAsync(request);
+
+                if (response.IsSuccessful)
+                    return (response, response.Content, null);
+                else
+                    return (response, null, null);
+            }
+            catch (Exception e)
+            {
+                return (response, null, e);
+            }
         }
 
         public async Task<(RestResponse? RestResponse, string? ResponseContent, Exception? Exception)> TryGetAsync(string url)
@@ -149,11 +190,10 @@ namespace Blum.Core
                 var request = new RestRequest(url, Method.Put);
 
                 if (_headers != null && _headers.Any())
-                {
                     request.AddHeaders(_headers);
-                }
 
-                request.AddStringBody(jsonData, RestSharp.ContentType.Json);
+                if (jsonData != null)
+                    request.AddStringBody(jsonData, RestSharp.ContentType.Json);
 
                 response = await _client.ExecuteAsync(request);
 
@@ -178,7 +218,8 @@ namespace Blum.Core
                 if (_headers != null && _headers.Any())
                     request.AddHeaders(_headers);
 
-                request.AddStringBody(jsonData, RestSharp.ContentType.Json);
+                if (jsonData != null)
+                    request.AddStringBody(jsonData, RestSharp.ContentType.Json);
 
                 response = await _client.ExecuteAsync(request);
 

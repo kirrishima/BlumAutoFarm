@@ -6,7 +6,7 @@
 
         public BlumException(string message) : base(message) { }
 
-        public BlumException(string message, Exception innerException) : base(message, innerException) { }
+        public BlumException(string message, Exception? innerException) : base(message, innerException) { }
 
         public static void ThrowIfNull(object argument, string? argumentName = null)
         {
@@ -31,6 +31,6 @@
 
         public BlumFatalError(string message) : base(message) { }
 
-        public BlumFatalError(string message, Exception innerException) : base(message, innerException) { }
+        public BlumFatalError(string message, Exception? innerException) : base(message, innerException) { }
     }
 }
