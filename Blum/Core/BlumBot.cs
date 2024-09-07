@@ -166,7 +166,7 @@ namespace Blum.Core
                             ConsoleColor.Yellow));
                         if (fails == 0)
                         {
-                            _logger.Info("Waiting for 60 seconds before retry...");
+                            _logger.Info(($"{_accountName}", ConsoleColor.DarkCyan), ("Waiting for 60 seconds before retry...", null));
                             await Task.Delay(TimeSpan.FromSeconds(60));
                             fails++;
                             continue;
