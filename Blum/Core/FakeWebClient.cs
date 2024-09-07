@@ -86,6 +86,24 @@ namespace Blum.Core
             }
         }
 
+        public void ClearHeaders(params string[] names)
+        {
+            if (names.Length == 0)
+            {
+                _headers.Clear();
+            }
+            else
+            {
+                foreach (var name in names)
+                {
+                    if (_headers.ContainsKey(name))
+                    {
+                        _headers.Remove(name);
+                    }
+                }
+            }
+        }
+
         public void SetDeviceProfile(DeviceProfile newProfile)
         {
             _currentProfile = newProfile;
@@ -149,11 +167,10 @@ namespace Blum.Core
                 var request = new RestRequest(url, Method.Put);
 
                 if (_headers != null && _headers.Any())
-                {
                     request.AddHeaders(_headers);
-                }
 
-                request.AddStringBody(jsonData, RestSharp.ContentType.Json);
+                if (jsonData != null)
+                    request.AddStringBody(jsonData, RestSharp.ContentType.Json);
 
                 response = await _client.ExecuteAsync(request);
 
@@ -178,7 +195,8 @@ namespace Blum.Core
                 if (_headers != null && _headers.Any())
                     request.AddHeaders(_headers);
 
-                request.AddStringBody(jsonData, RestSharp.ContentType.Json);
+                if (jsonData != null)
+                    request.AddStringBody(jsonData, RestSharp.ContentType.Json);
 
                 response = await _client.ExecuteAsync(request);
 
