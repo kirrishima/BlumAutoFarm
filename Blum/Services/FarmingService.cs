@@ -74,6 +74,7 @@ namespace Blum.Services
                         {
                             try
                             {
+                                await Task.Delay(1000);
                                 var msg = await blumBot.ClaimDailyRewardAsync();
                                 if (msg.Item1)
                                 {
@@ -101,9 +102,13 @@ namespace Blum.Services
 
                                 try
                                 {
-                                    timestamp = startTime = endTime = playPasses = null;
+                                    await Task.Delay(1000);
 
+                                    timestamp = startTime = endTime = playPasses = null;
                                     (timestamp, startTime, endTime, playPasses) = await blumBot.GetBalanceAsync();
+
+                                    await Task.Delay(1000);
+
                                     if (startTime == null && endTime == null && maxTries > 0)
                                     {
                                         if (await blumBot.StartFarmingAsync())
@@ -116,6 +121,8 @@ namespace Blum.Services
                                     else if (startTime != null && endTime != null && timestamp != null && timestamp >= endTime && maxTries > 0)
                                     {
                                         await blumBot.RefreshUsingTokenAsync();
+
+                                        await Task.Delay(1000);
 
                                         var (claimTimestamp, balance) = await blumBot.ClaimFarmAsync();
 
