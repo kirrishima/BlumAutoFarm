@@ -1,6 +1,7 @@
 ﻿using Blum.Exceptions;
 using Blum.Models;
 using Blum.Utilities;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Web;
@@ -19,10 +20,7 @@ namespace Blum.Core
         protected string _refreshToken;
         protected Logger _logger;
         protected RandomUtility.Random _random;
-        protected static readonly string SessionsFolder = "sessions";
-        private readonly StreamWriter _streamWriter;
-        private static readonly object _fileLock = new();
-        private static readonly object _consoleLock = new();
+        protected WTelegramLogger WTelegramLogger;
         private static readonly object _configLock = new();
 
         private bool _disposed = false;
@@ -54,9 +52,6 @@ namespace Blum.Core
             public static readonly string ClaimDailyReward = "https://game-domain.blum.codes/api/v1/daily-reward?offset=-180";
         }
 
-        private static readonly ConsoleColor[] WTelegramConsoleColor = [ ConsoleColor.DarkGray, ConsoleColor.DarkCyan,
-            ConsoleColor.Cyan, ConsoleColor.Yellow, ConsoleColor.Red, ConsoleColor.Magenta, ConsoleColor.DarkBlue ];
-
         public BlumBot(FakeWebClient session, string account, string phoneNumber, Logger.LoggingAction? loggingAction = null, bool debugMode = false)
         {
             _session = session;
@@ -67,31 +62,15 @@ namespace Blum.Core
             _logger = new Logger(loggingAction ?? Console.Write);
             _logger.DebugMode = debugMode;
             _random = new RandomUtility.Random();
+            WTelegramLogger = new WTelegramLogger(account);
+            WTelegramLogger.GetLogFunction()(-1, $"{new string('-', 128)}\n{new string('\t', 6)}{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} Bot Started\n{new string('-', 128)}");
 
-            if (!Directory.Exists(SessionsFolder))
+            if (!Directory.Exists(TelegramSessionsPaths.SessionsFolder))
             {
-                Directory.CreateDirectory(SessionsFolder);
+                Directory.CreateDirectory(TelegramSessionsPaths.SessionsFolder);
             }
-            _streamWriter = new StreamWriter($"{Path.Combine(SessionsFolder, $"{_accountName} WTelegram")} logs.txt", append: true);
             _client = new Client(Config);
-            Helpers.Log = (lvl, str) =>
-            {
-                lock (_fileLock)
-                {
-                    _streamWriter.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} | Log Level: {lvl} | {str}");
-                    _streamWriter.Flush();
-                }
-                if (lvl > 2)
-                {
-                    lock (_consoleLock)
-                    {
-                        ConsoleColor color = Console.ForegroundColor;
-                        Console.ForegroundColor = WTelegramConsoleColor[lvl];
-                        Console.WriteLine(str);
-                        Console.ForegroundColor = color;
-                    }
-                }
-            };
+            Helpers.Log = WTelegramLogger.GetLogFunction();
         }
 
         ~BlumBot()
@@ -115,7 +94,6 @@ namespace Blum.Core
                 _client?.Dispose();
                 _random = null;
                 _refreshToken = null;
-                _streamWriter?.Dispose();
             }
 
             _disposed = true;
@@ -132,7 +110,7 @@ namespace Blum.Core
                     case "phone_number": return _phoneNumber;
                     case "verification_code":
                         Console.Write($"({_accountName}) Verification code: "); return Console.ReadLine();
-                    case "session_pathname": return Path.GetFullPath(Path.Combine(SessionsFolder, _accountName));
+                    case "session_pathname": return Path.GetFullPath(Path.Combine(TelegramSessionsPaths.SessionsFolder, _accountName));
                     default: return null;
                 }
             }
