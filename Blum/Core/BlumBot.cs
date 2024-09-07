@@ -211,6 +211,8 @@ namespace Blum.Core
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("StartGameAsync()", null));
 
+            await _session.TryOptionsAsync(BlumUrls.GameStart);
+            await Task.Delay(1000);
             var result = await _session.TryPostAsync(BlumUrls.GameStart);
             var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(result.responseContent ?? "{}");
             await Task.Delay(3000);
@@ -251,9 +253,16 @@ namespace Blum.Core
             };
             var jsonData = JsonSerializer.Serialize(data);
 
+            await _session.TryOptionsAsync(BlumUrls.GameClaim);
+
+            await Task.Delay(1000);
+
             var result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
             if (result.restResponse?.IsSuccessStatusCode != true)
             {
+                await Task.Delay(1000);
+                await _session.TryOptionsAsync(BlumUrls.GameClaim);
+
                 await Task.Delay(1000);
                 result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
             }
@@ -287,9 +296,14 @@ namespace Blum.Core
             string? responseText = null;
             try
             {
+                await _session.TryOptionsAsync(BlumUrls.ClaimDailyReward);
+                await Task.Delay(1000);
                 var response = await _session.TryGetAsync(BlumUrls.ClaimDailyReward);
                 if (response.RestResponse?.IsSuccessStatusCode == true)
                 {
+                    await Task.Delay(1000);
+                    await _session.TryOptionsAsync(BlumUrls.ClaimDailyReward);
+
                     await Task.Delay(1000);
                     response = await _session.TryPostAsync(BlumUrls.ClaimDailyReward);
                 }
@@ -303,7 +317,7 @@ namespace Blum.Core
             }
         }
 
-        public async Task RefreshAsync()
+        public async Task ReloginAsync()
         {
             _session.RecreateRestClient();
             await LoginAsync();
@@ -312,11 +326,15 @@ namespace Blum.Core
         public async Task<bool> RefreshUsingTokenAsync()
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("RefreshAsync()", null));
+
+            await _session.TryOptionsAsync(BlumUrls.Refresh);
+            await Task.Delay(1000);
+
             var data = new { refresh = _refreshToken };
             var jsonData = JsonSerializer.Serialize(data);
-            var response = await _session.TryPostAsync(BlumUrls.Refresh, jsonData);
-            var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(response.responseContent ?? "{}");
-            var (r, s, _) = response;
+            var (_, response, _) = await _session.TryPostAsync(BlumUrls.Refresh, jsonData);
+            var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(response ?? "{}");
+
             bool success = false;
 
             if (responseJson?.TryGetValue("access", out object? obj) == true)
@@ -366,13 +384,23 @@ namespace Blum.Core
         {
             _logger.DebugMode = true;
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimFarmAsync()", null));
+
+            await _session.TryOptionsAsync(BlumUrls.FarmingClaim);
+            await Task.Delay(1000);
+
             var result = await _session.TryPostAsync(BlumUrls.FarmingClaim);
+
             _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
             if (result.restResponse?.IsSuccessStatusCode != true)
             {
                 _logger.Debug((_accountName, ConsoleColor.DarkCyan), ("ClaimFarmAsync request failed, retry...", null));
+
+                await Task.Delay(1000);
+                await _session.TryOptionsAsync(BlumUrls.FarmingClaim);
+
                 await Task.Delay(1000);
                 result = await _session.TryPostAsync(BlumUrls.FarmingClaim);
+
                 _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
             }
 
@@ -398,9 +426,16 @@ namespace Blum.Core
         public async Task<bool> StartFarmingAsync()
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("StartFarmingAsync()", null));
+
+            await _session.TryOptionsAsync(BlumUrls.FarmingStart);
+            await Task.Delay(1000);
+
             var result = await _session.TryPostAsync(BlumUrls.FarmingStart);
             if (result.restResponse?.IsSuccessStatusCode != true)
             {
+                await Task.Delay(1000);
+                await _session.TryOptionsAsync(BlumUrls.FarmingStart);
+
                 await Task.Delay(1000);
                 await _session.TryPostAsync(BlumUrls.FarmingStart);
             }
@@ -560,6 +595,11 @@ namespace Blum.Core
         public async Task<(long? timeStamp, long? timeStart, long? timeEnd, int? playPasses)> GetBalanceAsync()
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("GetBalanceAsync()", null));
+
+            await _session.TryOptionsAsync(BlumUrls.Balance);
+
+            await Task.Delay(1000);
+
             var (_, response, _) = await _session.TryGetAsync(BlumUrls.Balance);
 
             _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"GetBalanceAsync response: {response}", null));
