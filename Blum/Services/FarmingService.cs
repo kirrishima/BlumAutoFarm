@@ -60,9 +60,7 @@ namespace Blum.Services
                     try
                     {
                         BlumBot blumBot = new(fakeWebClient, account, phoneNumber, debugMode: false);
-
                         int maxTries = 2;
-                        bool wasPrintedClaimInfo = false;
 
                         await Task.Delay(RandomDelayMilliseconds(Delay.Account));
 
@@ -75,15 +73,7 @@ namespace Blum.Services
                                 await Task.Delay(1000);
                                 var msg = await blumBot.ClaimDailyRewardAsync();
                                 if (msg.Item1)
-                                {
                                     logger.Info((account, ConsoleColor.DarkCyan), ("Claimed daily reward!", null));
-                                    wasPrintedClaimInfo = true;
-                                }
-                                else if (!wasPrintedClaimInfo)
-                                {
-                                    logger.Info((account, ConsoleColor.DarkCyan), ("Daily reward already claimed!", null));
-                                    wasPrintedClaimInfo = true;
-                                }
 
                                 var (timestamp, startTime, endTime, playPasses) = await blumBot.GetBalanceAsync();
 
@@ -110,7 +100,7 @@ namespace Blum.Services
                                     if (startTime == null && endTime == null && maxTries > 0)
                                     {
                                         if (await blumBot.StartFarmingAsync())
-                                            logger.Info((account, ConsoleColor.DarkCyan), ($"Started farming!", null));
+                                            logger.Success((account, ConsoleColor.DarkCyan), ($"Started farming!", null));
                                         else
                                             logger.Warning((account, ConsoleColor.DarkCyan), ($"Couldn't start farming for unknown reason!", null));
 
@@ -123,7 +113,6 @@ namespace Blum.Services
                                         await Task.Delay(1000);
 
                                         var (claimTimestamp, balance) = await blumBot.ClaimFarmAsync();
-                                        logger.Warning((account, ConsoleColor.DarkCyan), ($"claimTimestamp: '{claimTimestamp}', balance: '{balance}'", null));
 
                                         if (timestamp == null || balance == null)
                                             logger.Warning((account, ConsoleColor.DarkCyan), ($"Seems that it's failed to claim the farm reward", null));
@@ -176,7 +165,7 @@ namespace Blum.Services
                                         await refreshingLoopTask;*/
 
                                         await Task.Delay(milliseconds);
-                                        wasPrintedClaimInfo = false;
+
                                         await blumBot.RefreshUsingTokenAsync();
                                     }
                                     else if (maxTries <= 0)
