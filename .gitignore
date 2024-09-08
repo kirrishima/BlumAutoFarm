@@ -1,3 +1,6 @@
 bin/
 obj/
 .vs
+publish.ps1
+run publish.bat
+update_main.sh
