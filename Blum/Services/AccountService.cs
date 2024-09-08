@@ -3,7 +3,6 @@ using Blum.Utilities;
 using Blum.Models;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Security.Principal;
 
 namespace Blum.Services
 {
@@ -31,11 +30,14 @@ namespace Blum.Services
             try
             {
                 string encryptedJson = File.ReadAllText(_filePath);
+                if (string.IsNullOrWhiteSpace(encryptedJson))
+                {
+                    return new AccountsData();
+                }
                 jsonContent = _aes.Decrypt(encryptedJson);
             }
             catch (Exception)
             {
-                _logger.Error("Error reading JSON file.");
                 return new AccountsData();
             }
 
@@ -46,14 +48,12 @@ namespace Blum.Services
             }
             catch (JsonException)
             {
-                _logger.Error("JSON file is not valid.");
-                return new AccountsData(); ;
+                return new AccountsData();
             }
 
             if (accountsData == null || accountsData.Accounts == null || accountsData.Accounts.Count == 0)
             {
-                _logger.Error("JSON structure is not valid or there are no accounts.");
-                return new AccountsData(); ;
+                return new AccountsData();
             }
 
             return accountsData;
@@ -76,7 +76,7 @@ namespace Blum.Services
             var newAccount = new Account
             {
                 PhoneNumber = phoneNumber,
-                SessionName = sessionName
+                Name = sessionName
             };
 
             if (accountsData.Accounts.Contains(newAccount))
@@ -86,7 +86,7 @@ namespace Blum.Services
 
             foreach (var item in accountsData.Accounts)
             {
-                if (item.SessionName == sessionName)
+                if (item.Name == sessionName)
                 {
                     return $"Account with name {sessionName} already exists";
                 }
@@ -104,26 +104,38 @@ namespace Blum.Services
             return "Account added!";
         }
 
-        public string DeleteAccount(string sessionName, string phoneNumber)
+        public string DeleteAccountByName(string accountName)
         {
             var accountsData = GetAccounts();
-            Account account = new Account
-            {
-                PhoneNumber = phoneNumber,
-                SessionName = sessionName
-            };
-
-            if (!accountsData.Accounts.Contains(account))
-            {
-                return $"Account with name {sessionName} and phone number {phoneNumber} not found in {_filePath}";
-            }
-
-            accountsData.Accounts.Remove(account);
-
             ValidateAccountsData(ref accountsData);
 
-            SaveJsonFile(accountsData);
-            return $"Account {sessionName} deleted successfully";
+            Account? foundAccount = accountsData.Accounts.Find((Account acc) => acc.Name == accountName);
+
+            if (foundAccount != null)
+            {
+                accountsData.Accounts.Remove(foundAccount);
+
+                string sessionFilepath = Path.Combine(TelegramSessionsPaths.SessionsFolder, accountName);
+                string sessionLogfilePath = TelegramSessionsPaths.GetWTelegramLogFilePath(accountName);
+
+                if (File.Exists(sessionFilepath))
+                {
+                    File.Delete(sessionFilepath);
+                }
+
+                if (File.Exists(sessionLogfilePath))
+                {
+                    File.Delete(sessionLogfilePath);
+                }
+
+                ValidateAccountsData(ref accountsData);
+
+                SaveJsonFile(accountsData);
+
+                return $"Account '{accountName}' deleted successfully";
+            }
+
+            return $"Account '{accountName}' was not found.";
         }
 
         private void SaveJsonFile(AccountsData accountsData)
@@ -155,9 +167,9 @@ namespace Blum.Services
                     isValid = false;
                 }
 
-                if (!IsValidSessionName(account.SessionName, out string _))
+                if (!IsValidSessionName(account.Name, out string _))
                 {
-                    _logger.Warning($"Warning: Session name '{account.SessionName}' is not valid and will be removed.");
+                    _logger.Warning($"Warning: Session name '{account.Name}' is not valid and will be removed.");
                     isValid = false;
                 }
 

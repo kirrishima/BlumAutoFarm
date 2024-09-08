@@ -9,7 +9,7 @@ namespace Blum.Models
         public string PhoneNumber { get; set; }
 
         [JsonPropertyName("session_name")]
-        public string SessionName { get; set; }
+        public string Name { get; set; }
 
         public override bool Equals(object? obj)
         {
@@ -17,12 +17,12 @@ namespace Blum.Models
                 return false;
 
             var other = (Account)obj;
-            return PhoneNumber == other.PhoneNumber && SessionName == other.SessionName;
+            return PhoneNumber == other.PhoneNumber && Name == other.Name;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(PhoneNumber, SessionName);
+            return HashCode.Combine(PhoneNumber, Name);
         }
 
         public bool IsValid()

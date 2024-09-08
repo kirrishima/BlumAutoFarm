@@ -1,6 +1,4 @@
-﻿using System.Security.Principal;
-using System.Text.Json;
-using Blum.Core;
+﻿using Blum.Core;
 using Blum.Exceptions;
 using Blum.Models;
 using Blum.Utilities;
@@ -32,7 +30,7 @@ namespace Blum.Services
 
                 foreach (var account in accounts.Accounts)
                 {
-                    tasks.Add(Task.Run(() => StartBlumFarming(account.SessionName, account.PhoneNumber)));
+                    tasks.Add(Task.Run(() => StartBlumFarming(account.Name, account.PhoneNumber)));
                 }
                 await Task.WhenAll(tasks);
             }
@@ -89,7 +87,7 @@ namespace Blum.Services
 
                                 var (timestamp, startTime, endTime, playPasses) = await blumBot.GetBalanceAsync();
 
-                                if (playPasses > 0)
+                                if (playPasses > 0 && MaxPlays > 0)
                                 {
                                     int usePasses = (playPasses ?? 0) > MaxPlays ? MaxPlays : (playPasses ?? 0);
                                     logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Will be used: {usePasses}, " +
@@ -125,6 +123,7 @@ namespace Blum.Services
                                         await Task.Delay(1000);
 
                                         var (claimTimestamp, balance) = await blumBot.ClaimFarmAsync();
+                                        logger.Warning((account, ConsoleColor.DarkCyan), ($"claimTimestamp: '{claimTimestamp}', balance: '{balance}'", null));
 
                                         if (timestamp == null || balance == null)
                                             logger.Warning((account, ConsoleColor.DarkCyan), ($"Seems that it's failed to claim the farm reward", null));
@@ -150,7 +149,7 @@ namespace Blum.Services
 
                                         int milliseconds = sleepTimeSeconds > int.MaxValue / 1000 ? int.MaxValue : (int)(sleepTimeSeconds * 1000);
 
-                                        async Task Refreshing()
+                                        /* async Task Refreshing()
                                         {
                                             try
                                             {
@@ -172,9 +171,11 @@ namespace Blum.Services
                                         Task refreshingLoopTask = RefreshConnection(Refreshing, cts.Token);
 
                                         await Task.Delay(milliseconds);
-                                        cts.Cancel();
-                                        await refreshingLoopTask;
 
+                                        cts.Cancel();
+                                        await refreshingLoopTask;*/
+
+                                        await Task.Delay(milliseconds);
                                         wasPrintedClaimInfo = false;
                                         await blumBot.RefreshUsingTokenAsync();
                                     }
@@ -272,7 +273,7 @@ namespace Blum.Services
                         //Console.WriteLine($"Before resfreh: {durationFormatted}");
                         await Task.Delay(x, token);
                     }
-                    await func();
+                    //await func();
                 }
             }
             catch (TaskCanceledException) { }
