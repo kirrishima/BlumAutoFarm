@@ -228,9 +228,6 @@ namespace Blum.Core
             if (result.restResponse?.IsSuccessStatusCode != true)
             {
                 await Task.Delay(1000);
-                await _session.TryOptionsAsync(BlumUrls.GameClaim);
-
-                await Task.Delay(1000);
                 result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
             }
 
@@ -382,9 +379,6 @@ namespace Blum.Core
             var result = await _session.TryPostAsync(BlumUrls.FarmingStart);
             if (result.restResponse?.IsSuccessStatusCode != true)
             {
-                await Task.Delay(1000);
-                await _session.TryOptionsAsync(BlumUrls.FarmingStart);
-
                 await Task.Delay(1000);
                 await _session.TryPostAsync(BlumUrls.FarmingStart);
             }
