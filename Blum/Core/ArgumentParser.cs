@@ -365,17 +365,13 @@ namespace Blum.Core
                     string result = input.Length > 3
                         ? new string('*', input.Length - 3) + input[^3..]
                         : input;
-                    Console.WriteLine($"{account.SessionName}, {result}");
+                    Console.WriteLine($"{account.Name}, {result}");
                 }
+
                 Console.Write("Enter session name to be deleted: ");
                 string sessionName = Console.ReadLine() ?? "";
 
-                Account? foundAccount = accounts.Find((Account x) => x.SessionName == sessionName);
-                if (foundAccount != null)
-                {
-                    string result = accountManager.DeleteAccount(foundAccount.SessionName ?? "", foundAccount.PhoneNumber ?? "");
-                    Console.WriteLine(result);
-                }
+                Console.WriteLine(accountManager.DeleteAccountByName(sessionName));
             }
             catch (Exception ex)
             {
