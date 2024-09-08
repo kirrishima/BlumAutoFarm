@@ -267,9 +267,6 @@ namespace Blum.Core
                 if (response.RestResponse?.IsSuccessStatusCode == true)
                 {
                     await Task.Delay(1000);
-                    await _session.TryOptionsAsync(BlumUrls.ClaimDailyReward);
-
-                    await Task.Delay(1000);
                     response = await _session.TryPostAsync(BlumUrls.ClaimDailyReward);
                 }
                 responseText = response.ResponseContent;
@@ -350,47 +347,31 @@ namespace Blum.Core
             public long? Timestamp { get; set; }
         }
 
-        public async Task<(long?, object?)> ClaimFarmAsync()
+        public async Task<(long?, string?)> ClaimFarmAsync()
         {
-            // _logger.DebugMode = true;
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimFarmAsync()", null));
 
             var result = await _session.TryPostAsync(BlumUrls.FarmingClaim);
 
-            // _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
+            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
             if (result.restResponse?.IsSuccessStatusCode != true)
             {
-                // _logger.Debug((_accountName, ConsoleColor.DarkCyan), ("ClaimFarmAsync request failed, retry...", null));
+                _logger.Debug((_accountName, ConsoleColor.DarkCyan), ("ClaimFarmAsync request failed, retry...", null));
 
                 await Task.Delay(1000);
                 result = await _session.TryPostAsync(BlumUrls.FarmingClaim);
 
-                //_logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
+                _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
             }
 
             if (string.IsNullOrWhiteSpace(result.responseContent))
                 return (null, null);
 
             var json = JsonSerializer.Deserialize<BalanceClaimJson>(result.responseContent);
-            //_logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"ClaimFarmAsync response deserialized", null));
-            //_logger.DebugDictionary(response);
+
             long? timestamp = json?.Timestamp;
-            object? balance = json?.AvailableBalance;
+            string? balance = json?.AvailableBalance;
 
-            /*            if (json?.TryGetValue("timestamp", out object? value) == true)
-                        {
-                            fee = value;
-                            timestamp = value as long?;
-                        }
-                        try
-                        {
-                            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"ClaimFarmAsync balance: '{(balance as JsonElement?)?.GetString()} / {balance} / {(double?)balance}'", null));
-                            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"ClaimFarmAsync balance: timestamp: '{(double?)fee} / {timestamp} / {(fee as JsonElement?)?.GetString()}'", null));
-                        }*/
-            /*            catch (Exception) { }*/
-
-            /*            await Task.Delay(1000);
-                        _logger.DebugMode = false;*/
             return (timestamp / 1000, balance);
         }
 
@@ -416,7 +397,6 @@ namespace Blum.Core
                 return false;
             }
             return true;
-
         }
 
         private class JsonAccessToken
