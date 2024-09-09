@@ -70,18 +70,22 @@ namespace Blum.Services
                         {
                             try
                             {
-                                await Task.Delay(1000);
+                                await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
                                 var msg = await blumBot.ClaimDailyRewardAsync();
                                 if (msg.Item1)
-                                    logger.Info((account, ConsoleColor.DarkCyan), ("Claimed daily reward!", null));
+                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Claimed daily reward! {msg.Item2}", null));
+
+                                await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
 
                                 var (timestamp, startTime, endTime, playPasses) = await blumBot.GetBalanceAsync();
 
                                 if (playPasses > 0 && MaxPlays > 0)
                                 {
                                     int usePasses = (playPasses ?? 0) > MaxPlays ? MaxPlays : (playPasses ?? 0);
-                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting play game! Play passes: {playPasses ?? 0}. Will be used: {usePasses}, " +
-                                        $"as limit is set to {MaxPlays}", null));
+                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting the game. Available play passes: {playPasses ?? 0}. " +
+                                        $"Passes to be used: {usePasses}. Maximum allowed: {MaxPlays}", null));
+
+                                    await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
 
                                     await blumBot.PlayGameAsync(usePasses);
                                 }
@@ -90,32 +94,33 @@ namespace Blum.Services
 
                                 try
                                 {
-                                    await Task.Delay(1000);
+                                    await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
 
                                     timestamp = startTime = endTime = playPasses = null;
                                     (timestamp, startTime, endTime, playPasses) = await blumBot.GetBalanceAsync();
 
-                                    await Task.Delay(1000);
-
                                     if (startTime == null && endTime == null && maxTries > 0)
                                     {
+                                        await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
+
                                         if (await blumBot.StartFarmingAsync())
                                             logger.Success((account, ConsoleColor.DarkCyan), ($"Started farming!", null));
                                         else
-                                            logger.Warning((account, ConsoleColor.DarkCyan), ($"Couldn't start farming for unknown reason!", null));
+                                            logger.Warning((account, ConsoleColor.DarkCyan), ($"Couldn't start farming!", null));
 
                                         maxTries--;
                                     }
                                     else if (startTime != null && endTime != null && timestamp != null && timestamp >= endTime && maxTries > 0)
                                     {
+                                        await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
                                         await blumBot.RefreshUsingTokenAsync();
 
-                                        await Task.Delay(1000);
+                                        await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
 
                                         var (claimTimestamp, balance) = await blumBot.ClaimFarmAsync();
 
-                                        if (timestamp == null || balance == null)
-                                            logger.Warning((account, ConsoleColor.DarkCyan), ($"Seems that it's failed to claim the farm reward", null));
+                                        if (claimTimestamp == null || balance == null)
+                                            logger.Warning((account, ConsoleColor.DarkCyan), ($"Seems that it is failed to claim the farm reward", null));
                                         else
                                             logger.Success((account, ConsoleColor.DarkCyan), ($"Claimed the farm reward! balance: {balance}", null));
 
@@ -130,10 +135,7 @@ namespace Blum.Services
                                              sleepDuration.Minutes,
                                              sleepDuration.Seconds);
 
-                                        DateTime now = DateTime.Now;
-                                        DateTime futureTime = now.Add(sleepDuration);
-                                        string futureTimeFormatted = futureTime.ToString("MM.dd, dddd, HH:mm:ss");
-                                        logger.Info((account, ConsoleColor.DarkCyan), ($"Sleep for {durationFormatted}. Ends at {futureTimeFormatted}", null));
+                                        logger.Info((account, ConsoleColor.DarkCyan), ($"Sleep for {durationFormatted}.", null));
                                         maxTries++;
 
                                         int milliseconds = sleepTimeSeconds > int.MaxValue / 1000 ? int.MaxValue : (int)(sleepTimeSeconds * 1000);
@@ -181,7 +183,7 @@ namespace Blum.Services
                     }
                     catch (BlumFatalError ex)
                     {
-                        logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: \nStack Trace: {ex.StackTrace} \nMessage: {ex.Message}", null));
+                        logger.Error((account, ConsoleColor.DarkCyan), ($"Fatal error: \nStack Trace:\n {ex.StackTrace} \nMessage:\n {ex.Message}", null));
                         logger.PrintAllExeceptionsData(ex.InnerException);
                         exitFlag = true;
                     }
