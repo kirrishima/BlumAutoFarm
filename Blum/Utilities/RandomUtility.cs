@@ -13,7 +13,8 @@ namespace Blum.Utilities
                 Account,
                 Play,
                 ClaimGame,
-                ErrorPlay
+                ErrorPlay,
+                BeforeRequest
             }
 
             public static int RandomPoints() => System.Random.Shared.Next(Range.Min, Range.Max);
@@ -24,6 +25,7 @@ namespace Blum.Utilities
                 Delay.Play => (int)((System.Random.Shared.NextDouble() * (15.0 - 5.0) + 5.0) * 1000),
                 Delay.ClaimGame => (int)((System.Random.Shared.NextDouble() * (50.0 - 40.0) + 40) * 1000),
                 Delay.ErrorPlay => (int)((System.Random.Shared.NextDouble() * (180.0 - 60.0) + 60.0) * 1000),
+                Delay.BeforeRequest => 1000,
                 _ => (int)((System.Random.Shared.NextDouble() * (40.0 - 30.0) + 30) * 1000)
             };
 
