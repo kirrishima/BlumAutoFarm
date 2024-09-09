@@ -254,6 +254,30 @@ namespace Blum.Core
                 return null;
         }
 
+        public class JsonDailyRewardResponse
+        {
+            public class Day
+            {
+                public class Rewards
+                {
+                    [JsonPropertyName("passes")]
+                    public int? Passes { get; set; } = null;
+
+                    [JsonPropertyName("points")]
+                    public string? Points { get; set; } = null;
+                }
+
+                [JsonPropertyName("ordinal")]
+                public int? Ordinal { get; set; } = null;
+
+                [JsonPropertyName("reward")]
+                public Rewards Reward { get; set; } = new Rewards();
+            }
+
+            [JsonPropertyName("days")]
+            public List<Day> Days { get; set; } = [];
+        }
+
         public async Task<(bool, string?)> ClaimDailyRewardAsync()
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimDailyRewardAsync()", null));
@@ -261,14 +285,27 @@ namespace Blum.Core
             try
             {
                 var response = await _session.TryGetAsync(BlumUrls.ClaimDailyReward);
+
+                var json = response.ResponseContent;
+                var res = JsonSerializer.Deserialize<JsonDailyRewardResponse>(json ?? "{}");
+                string reward;
+
+                try
+                {
+                    reward = $"Day: {res?.Days[0].Ordinal}; Passes: {res?.Days[0].Reward.Passes}; Points: {res?.Days[0].Reward.Points}";
+                }
+                catch (Exception)
+                {
+                    reward = string.Empty;
+                }
+
                 if (response.RestResponse?.IsSuccessStatusCode == true)
                 {
                     await Task.Delay(1000);
                     response = await _session.TryPostAsync(BlumUrls.ClaimDailyReward);
                 }
                 responseText = response.ResponseContent;
-                await Task.Delay(1000);
-                return responseText == "OK" ? (true, null) : (false, responseText);
+                return responseText == "OK" ? (true, reward) : (false, responseText);
             }
             catch (Exception)
             {
