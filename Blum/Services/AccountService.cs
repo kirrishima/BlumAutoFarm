@@ -13,8 +13,10 @@ namespace Blum.Services
         private static readonly Logger _logger = new();
         public static readonly string DefaultAccountsFilepath = Path.Combine(TelegramSettings.settingsDirectory, "accounts.dat");
 
-        public AccountService(Encryption aes, string? filePath = null)
+        public AccountService(string? filePath = null)
         {
+            var aes = new Encryption(TelegramSettings.ApiHash);
+
             _filePath = filePath ?? DefaultAccountsFilepath;
             _aes = aes;
         }
@@ -75,7 +77,7 @@ namespace Blum.Services
 
             var newAccount = new Account
             {
-                PhoneNumber = phoneNumber,
+                PhoneNumber = phoneNumber.StartsWith("+") ? phoneNumber : "+" + phoneNumber,
                 Name = sessionName
             };
 
@@ -102,6 +104,24 @@ namespace Blum.Services
             SaveJsonFile(accountsData);
 
             return "Account added!";
+        }
+
+        public string DisableEnableAccount(string accountName, bool enable = false)
+        {
+            var accountsData = GetAccounts();
+
+            foreach (var account in accountsData.Accounts)
+            {
+                if (account.Name == accountName)
+                {
+                    account.Enabled = enable;
+
+                    SaveJsonFile(accountsData);
+
+                    return $"Account '{account.Name}' is {(account.Enabled ? "enabled" : "disabled")}";
+                }
+            }
+            return $"Account with name '{accountName}' was not found";
         }
 
         public string DeleteAccountByName(string accountName)
@@ -169,7 +189,7 @@ namespace Blum.Services
 
                 if (!IsValidSessionName(account.Name, out string _))
                 {
-                    _logger.Warning($"Warning: Session name '{account.Name}' is not valid and will be removed.");
+                    _logger.Warning($"Warning: Account name '{account.Name}' is not valid and will be removed.");
                     isValid = false;
                 }
 
@@ -185,6 +205,27 @@ namespace Blum.Services
             //{
             //    throw new BlumException("No valid accounts left after validation.");
             //}
+        }
+
+        public void ProcessAccountsData(ref AccountsData accountsData)
+        {
+            ValidateAccountsData(ref accountsData);
+
+            SaveJsonFile(accountsData);
+
+            List<Account> enabledAccounts = [.. accountsData.Accounts];
+
+            foreach (var account in accountsData.Accounts)
+            {
+                if (!account.Enabled)
+                {
+                    _logger.Warning($"Warning: Account'{account.Name}' is disabled and will not be used.");
+                    enabledAccounts.Remove(account);
+                }
+            }
+
+            accountsData.Accounts.Clear();
+            accountsData.Accounts.AddRange(enabledAccounts);
         }
 
         public static bool IsValidPhoneNumber(string phoneNumber, out string feedback)
