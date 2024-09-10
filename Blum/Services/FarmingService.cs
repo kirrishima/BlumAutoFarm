@@ -15,8 +15,7 @@ namespace Blum.Services
         {
             try
             {
-                var aes = new Encryption(TelegramSettings.ApiHash);
-                AccountService accountManager = new(aes);
+                AccountService accountManager = new();
 
                 var accounts = accountManager.GetAccounts();
                 int accountTotal = accounts.Accounts.Count;
@@ -77,7 +76,7 @@ namespace Blum.Services
 
                                 await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
 
-                                var (timestamp, startTime, endTime, playPasses) = await blumBot.GetBalanceAsync();
+                                var (timestamp, startTime, endTime, playPasses, isFastFarmingEnabled) = await blumBot.GetBalanceAsync();
 
                                 if (playPasses > 0 && MaxPlays > 0)
                                 {
@@ -97,7 +96,7 @@ namespace Blum.Services
                                     await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
 
                                     timestamp = startTime = endTime = playPasses = null;
-                                    (timestamp, startTime, endTime, playPasses) = await blumBot.GetBalanceAsync();
+                                    (timestamp, startTime, endTime, playPasses, isFastFarmingEnabled) = await blumBot.GetBalanceAsync();
 
                                     if (startTime == null && endTime == null && maxTries > 0)
                                     {
