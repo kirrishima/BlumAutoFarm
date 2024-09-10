@@ -11,7 +11,7 @@ class Program
 
         if (args.Length == 0)
         {
-            await ArgumentParser.ParseArgs(["--start-farm"]);
+            await ArgumentParser.ParseArgs(["start-farm"]);
             return;
         }
         await ArgumentParser.ParseArgs(args);
