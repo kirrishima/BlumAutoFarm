@@ -1,9 +1,7 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Help;
-using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
-using System.Diagnostics;
 using Blum.Exceptions;
 using Blum.Models;
 using Blum.Services;
@@ -13,43 +11,6 @@ namespace Blum.Core
 {
     internal class ArgumentParser
     {
-        private class LoggerWithoutDateInOutput : Logger
-        {
-            override protected void Log(string message, LogMessageType type)
-            {
-                lock (_consoleLock)
-                {
-                    SetConsoleColor(logColors[type], () => _loggingAction(LogMessageTypeName[type]));
-
-                    _loggingAction(" | ");
-                    _loggingAction(message);
-                    _loggingAction("\n");
-                }
-            }
-
-            override protected void Log(LogMessageType type, string separator = " | ", params (string message, ConsoleColor? color)[] messages)
-            {
-                lock (_consoleLock)
-                {
-                    SetConsoleColor(logColors[type], () => _loggingAction(LogMessageTypeName[type]));
-                    _loggingAction(separator);
-
-                    for (int i = 0; i < messages.Length; i++)
-                    {
-                        var (message, color) = messages[i];
-                        if (color.HasValue)
-                            SetConsoleColor(color.Value, () => _loggingAction(message));
-                        else
-                            _loggingAction(message);
-
-                        if (i < messages.Length - 1)
-                            _loggingAction(separator);
-                    }
-                    _loggingAction("\n");
-                }
-            }
-        }
-
         private static readonly LoggerWithoutDateInOutput logger = new();
 
         public static async Task ParseArgs(string[] args)
@@ -462,7 +423,7 @@ namespace Blum.Core
                 string result = phoneNumber.Length > 9
                     ? phoneNumber[0..6] + new string('*', phoneNumber.Length - 6) + phoneNumber[^3..]
                     : phoneNumber;
-                Console.WriteLine($"{account.Name}, {result}");
+                Console.WriteLine($"{account.Name}, {result}, enabled: {account.Enabled}");
             }
         }
 
