@@ -11,6 +11,9 @@ namespace Blum.Models
         [JsonPropertyName("session_name")]
         public string Name { get; set; }
 
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = true;
+
         public override bool Equals(object? obj)
         {
             if (obj == null || GetType() != obj.GetType())
