@@ -292,7 +292,7 @@ namespace Blum.Core
 
                 try
                 {
-                    reward = $"Day: {res?.Days[0].Ordinal}; Passes: {res?.Days[0].Reward.Passes}; Points: {res?.Days[0].Reward.Points}";
+                    reward = $"Day: {res?.Days[1].Ordinal}; Passes: {res?.Days[1].Reward.Passes}; Points: {res?.Days[1].Reward.Points}";
                 }
                 catch (Exception)
                 {
@@ -555,23 +555,29 @@ namespace Blum.Core
 
         private class JsonBalanceResponse
         {
-            public class JsonTimeResponse
+            public class JsonFarming
             {
                 [JsonPropertyName("startTime")]
                 public long? StartTime { get; set; }
+
                 [JsonPropertyName("endTime")]
                 public long? EndTime { get; set; }
             }
 
+            [JsonPropertyName("isFastFarmingEnabled")]
+            public bool IsFastFarmingEnabled { get; set; } = false;
+
             [JsonPropertyName("timestamp")]
             public long? Timestamp { get; set; }
+
             [JsonPropertyName("playPasses")]
             public int? PlayPasses { get; set; }
+
             [JsonPropertyName("farming")]
-            public JsonTimeResponse? Farming { get; set; }
+            public JsonFarming? Farming { get; set; }
         }
 
-        public async Task<(long? timeStamp, long? timeStart, long? timeEnd, int? playPasses)> GetBalanceAsync()
+        public async Task<(long? timeStamp, long? timeStart, long? timeEnd, int? playPasses, bool? IsFastFarmingEnabled)> GetBalanceAsync()
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("GetBalanceAsync()", null));
 
@@ -582,14 +588,14 @@ namespace Blum.Core
             if (string.IsNullOrWhiteSpace(response))
             {
                 await Task.Delay(2500);
-                return (null, null, null, null);
+                return (null, null, null, null, null);
             }
 
             var responseJson = JsonSerializer.Deserialize<JsonBalanceResponse>(response);
             if (responseJson == null)
             {
                 _logger.Warning("Failed to fetch balance: GET request returned null");
-                return (null, null, null, null);
+                return (null, null, null, null, null);
             }
 
             long? timeStamp = responseJson.Timestamp;
@@ -608,15 +614,18 @@ namespace Blum.Core
                 timeEnd = timeEnd != 0 ? timeEnd : null;
             }
 
+            bool? isFastFarmingEnabled = responseJson.IsFastFarmingEnabled;
+
             _logger.Debug((_accountName, ConsoleColor.DarkCyan),
                 ("GetBalanceAsync data: ", null),
                 ($"timeStamp: {timeStamp}", null),
                 ($"playPasses: {playPasses}", null),
                 ($"timeStart: {timeStart}", null),
-                ($"timeEnd: {timeEnd}", null)
+                ($"timeEnd: {timeEnd}", null),
+                ($"isFastFarmingEnabled: {responseJson.IsFastFarmingEnabled}", null)
                 );
 
-            return (timeStamp / 1000, timeStart / 1000, timeEnd / 1000, playPasses);
+            return (timeStamp / 1000, timeStart / 1000, timeEnd / 1000, playPasses, isFastFarmingEnabled);
         }
     }
 }
