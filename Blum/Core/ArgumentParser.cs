@@ -1,5 +1,7 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Builder;
+using System.CommandLine.Help;
+using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.Diagnostics;
 using Blum.Exceptions;
@@ -73,12 +75,14 @@ namespace Blum.Core
             apiIdOption.AddValidator(result =>
             {
                 var value = result.GetValueOrDefault<string>();
-                if (!string.IsNullOrEmpty(value) && !TelegramSettings.IsValidApiId(value))
+
+                if (!result.IsImplicit)
                 {
-                    result.ErrorMessage = $"The provided API ID '{value}' is not valid.";
-                }
-                if (TelegramSettings.IsValidApiId(value ?? string.Empty))
-                {
+                    if (string.IsNullOrEmpty(value) || !TelegramSettings.IsValidApiId(value))
+                    {
+                        result.ErrorMessage = $"The provided API ID '{value}' is not valid.";
+                        return;
+                    }
                     TelegramSettings.ApiId = value;
                     logger.Info($"API ID set to: '{TelegramSettings.ApiId}'");
                 }
@@ -87,12 +91,14 @@ namespace Blum.Core
             apiHashOption.AddValidator(result =>
             {
                 var value = result.GetValueOrDefault<string>();
-                if (!string.IsNullOrEmpty(value) && !TelegramSettings.IsValidApiHash(value))
+
+                if (!result.IsImplicit)
                 {
-                    result.ErrorMessage = $"The provided API hash '{value}' is not valid.";
-                }
-                if (TelegramSettings.IsValidApiHash(value ?? string.Empty))
-                {
+                    if (!string.IsNullOrEmpty(value) || !TelegramSettings.IsValidApiHash(value))
+                    {
+                        result.ErrorMessage = $"The provided API hash '{value}' is not valid.";
+                        return;
+                    }
                     TelegramSettings.ApiHash = value;
                     logger.Info($"API Hash set to '{TelegramSettings.ApiHash}'");
                 }
@@ -126,13 +132,54 @@ namespace Blum.Core
                 apiHashOption,
                 CreateConfigCommand(),
                 AddAccountCommand(),
+                ShowAccountsCommand(),
                 DeleteAccountCommand(),
-                StartFarmCommand(),
-                ShowHelpCommand()
+                UseAccount(),
+                StartFarmCommand()
             };
 
-            var builder = new CommandLineBuilder(rootCommand).UseDefaults();
-            var parser = builder.Build();
+            var parser = new CommandLineBuilder(rootCommand)
+                .UseDefaults()
+                .UseHelp(ctx =>
+                {
+                    ctx.HelpBuilder.CustomizeLayout(
+                        _ =>
+                        {
+                            var defaultLayout = HelpBuilder.Default.GetLayout().ToList();
+
+                            // Add custom notes for specific commands
+                            if (ctx.Command.Name == rootCommand.Name ||
+                                ctx.Command.Name == AddAccountCommand().Name ||
+                                ctx.Command.Name == DeleteAccountCommand().Name ||
+                                ctx.Command.Name == ShowAccountsCommand().Name ||
+                                ctx.Command.Name == UseAccount().Name)
+                            {
+                                defaultLayout.Add(ctx =>
+                                {
+                                    ctx.Output.WriteLine();
+                                    ctx.Output.WriteLine("Notes:");
+                                    ctx.Output.WriteLine($"- The commands {AddAccountCommand().Name}, {DeleteAccountCommand().Name}, {ShowAccountsCommand().Name} and {UseAccount().Name} require valid API credentials.");
+                                    ctx.Output.WriteLine("- Use --api-id and --api-hash to specify the API ID and hash for this session.");
+                                    ctx.Output.WriteLine("- If no parameters are provided, the program will attempt to start farming with the existing configuration.");
+                                });
+                            }
+
+                            if (ctx.Command.Name == StartFarmCommand().Name)
+                            {
+                                defaultLayout.Add(ctx =>
+                                {
+                                    ctx.Output.WriteLine();
+                                    ctx.Output.WriteLine("Notes:");
+                                    ctx.Output.WriteLine($"- This command requires valid API credentials.");
+                                    ctx.Output.WriteLine("- Use --api-id and --api-hash to specify the API ID and hash for this session.");
+                                    ctx.Output.WriteLine("- If no parameters are provided, the program will attempt to start farming with the existing configuration.");
+                                });
+                            }
+
+                            return defaultLayout;
+                        });
+                })
+                .Build();
 
             try
             {
@@ -162,7 +209,7 @@ namespace Blum.Core
                 IsRequired = false
             };
 
-            var command = new Command("--create-config", $"Generates an configuration file ({TelegramSettings.configPath}), if it's not exists, with provided API ID and Hash. If none or only one of them provided, will be generated empty file")
+            var command = new Command("create-config", $"Generates an configuration file ({TelegramSettings.configPath}), if it's not exists, with provided API ID and Hash. If none or only one of them provided, will be generated empty file")
             {
                 apiIdOption,
                 apiHashOption
@@ -228,7 +275,7 @@ namespace Blum.Core
 
         private static Command AddAccountCommand()
         {
-            var command = new Command("--add-account", "Adds an existing account with the provided details.");
+            var command = new Command("add-account", "Adds an existing account with the provided details.");
             command.SetHandler(() =>
             {
                 if (string.IsNullOrEmpty(TelegramSettings.ApiHash))
@@ -241,20 +288,84 @@ namespace Blum.Core
             return command;
         }
 
+        private static Command UseAccount()
+        {
+            var command = new Command("use-account", "Sets whether to use account or not");
+
+            var accountNameOption = new Option<string>(
+                "--account-name",
+                description: "The name of the existing account"
+            )
+            {
+                IsRequired = true
+            };
+            accountNameOption.AddAlias("--name");
+            accountNameOption.AddAlias("-a");
+
+            var useAccountFlagOption = new Option<bool>(
+                "--use-account",
+                description: "Flag to set whether to use the account or not",
+                getDefaultValue: () => true
+            )
+            {
+                IsRequired = false
+            };
+            useAccountFlagOption.AddAlias("--use");
+            useAccountFlagOption.AddAlias("-u");
+
+            command.AddOption(accountNameOption);
+            command.AddOption(useAccountFlagOption);
+
+            command.AddValidator(result =>
+            {
+                AccountService accountManager = new();
+                var accounts = accountManager.GetAccounts().Accounts;
+
+                if (accounts.Count == 0)
+                {
+                    result.ErrorMessage = "No valid accounts were found.";
+                }
+
+                var accountName = result.GetValueForOption(accountNameOption);
+
+                if (accounts.Find((Account acc) => acc.Name == accountName) == null)
+                {
+                    Console.WriteLine($"There is no account with name '{accountName}'");
+                }
+            });
+
+            command.SetHandler((string accountName, bool useAccount) =>
+            {
+                AccountService accountManager = new();
+                string result = accountManager.DisableEnableAccount(accountName, useAccount);
+                Console.WriteLine(result);
+            }, accountNameOption, useAccountFlagOption);
+
+            return command;
+        }
+
+
         private static Command DeleteAccountCommand()
         {
-            var command = new Command("--delete-account", "Deletes an existing account.");
+            var command = new Command("delete-account", "Deletes an existing account.");
             command.SetHandler(() => DeleteAccount());
+            return command;
+        }
+
+        private static Command ShowAccountsCommand()
+        {
+            var command = new Command("show-accounts", "Prints all existing accounts.");
+            command.SetHandler(() => ShowAllAccounts());
             return command;
         }
 
         private static Command StartFarmCommand()
         {
-            var command = new Command("--start-farm", "Starts the farming process for all accounts in the configuration.");
+            var command = new Command("start-farm", "Starts the farming process for all accounts in the configuration.");
 
             command.SetHandler(async () =>
             {
-                if (string.IsNullOrWhiteSpace(TelegramSettings.ApiId) || string.IsNullOrWhiteSpace(TelegramSettings.ApiHash))
+                if (!TelegramSettings.IsValidApiId(TelegramSettings.ApiId) || !TelegramSettings.IsValidApiHash(TelegramSettings.ApiHash))
                 {
                     logger.Info("API settings are not fully configured. Please provide --api-id and --api-hash.");
                     return;
@@ -262,13 +373,6 @@ namespace Blum.Core
                 await HandleStartFarm();
             });
 
-            return command;
-        }
-
-        private static Command ShowHelpCommand()
-        {
-            var command = new Command("--help", "Shows the help text.");
-            command.SetHandler(() => ShowHelp());
             return command;
         }
 
@@ -334,8 +438,7 @@ namespace Blum.Core
                     return;
                 }
 
-                var aes = new Encryption(TelegramSettings.ApiHash);
-                var accountManager = new AccountService(aes);
+                var accountManager = new AccountService();
                 Console.WriteLine(accountManager.AddAccount(sessionName, phoneNumber));
             }
             catch (Exception ex)
@@ -344,29 +447,33 @@ namespace Blum.Core
             }
         }
 
+        private static void PrintAccounts(List<Account>? accounts)
+        {
+            if (accounts is null || accounts.Count == 0)
+            {
+                logger.Info("No valid accounts were found.");
+                return;
+            }
+
+            Console.WriteLine("\nCurrent accounts:");
+            foreach (var account in accounts)
+            {
+                string phoneNumber = account.PhoneNumber;
+                string result = phoneNumber.Length > 9
+                    ? phoneNumber[0..6] + new string('*', phoneNumber.Length - 6) + phoneNumber[^3..]
+                    : phoneNumber;
+                Console.WriteLine($"{account.Name}, {result}");
+            }
+        }
+
         private static void DeleteAccount()
         {
             try
             {
-                var aes = new Encryption(TelegramSettings.ApiHash);
-                AccountService accountManager = new(aes);
+                AccountService accountManager = new();
                 var accounts = accountManager.GetAccounts().Accounts;
 
-                if (accounts.Count == 0)
-                {
-                    logger.Info("No valid accounts were found.");
-                    return;
-                }
-
-                Console.WriteLine("\nCurrent accounts:");
-                foreach (var account in accounts)
-                {
-                    string input = account.PhoneNumber;
-                    string result = input.Length > 3
-                        ? new string('*', input.Length - 3) + input[^3..]
-                        : input;
-                    Console.WriteLine($"{account.Name}, {result}");
-                }
+                PrintAccounts(accounts);
 
                 Console.Write("Enter session name to be deleted: ");
                 string sessionName = Console.ReadLine() ?? "";
@@ -379,23 +486,19 @@ namespace Blum.Core
             }
         }
 
-        private static void ShowHelp()
+        private static void ShowAllAccounts()
         {
-            var processName = Process.GetCurrentProcess().ProcessName;
-            Console.WriteLine($"""
-            Usage: {processName} [options]
+            try
+            {
+                AccountService accountManager = new();
+                var accounts = accountManager.GetAccounts().Accounts;
 
-            Options:
-              --create-config        Generates an empty configuration file.
-              --add-account          Adds an existing account. Requires valid api_id and api_hash credentials.
-              --delete-account       Deletes an existing account.
-              --start-farm           Starts the farming process for all accounts in the configuration.
-
-            Notes:
-            - The options --add-account and --delete-account require valid api_hash credentials.
-            - Use --api-id and --api-hash to specify the API ID and hash for this session.
-            - If no parameters are provided, the program will attempt to start farming with the existing configuration.
-            """);
+                PrintAccounts(accounts);
+            }
+            catch (Exception ex)
+            {
+                PrintErrorAndExitWithCode(ex.Message, 1);
+            }
         }
 
         private static void PrintErrorAndExitWithCode(string message, int code)
