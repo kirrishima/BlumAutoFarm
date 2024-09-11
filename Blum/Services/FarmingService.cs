@@ -9,7 +9,6 @@ namespace Blum.Services
     internal class FarmingService
     {
         private static readonly Logger logger = new();
-        public static int MaxPlays { get; set; } = TelegramSettings.MaxPlays;
 
         public static async Task AutoStartBlumFarming()
         {
@@ -20,11 +19,11 @@ namespace Blum.Services
                 var accounts = accountManager.GetAccounts();
                 int accountTotal = accounts.Accounts.Count;
 
-                AccountService.ValidateAccountsData(ref accounts);
+                logger.Info($"Found {accountTotal} sessions.");
 
+                accountManager.ProcessAccountsData(ref accounts);
                 int validAccountsCount = accounts.Accounts.Count;
 
-                logger.Info($"Found {accountTotal} sessions. {(accountTotal > 0 ? $"Valid: {validAccountsCount}" : "")}");
                 var tasks = new List<Task>();
 
                 foreach (var account in accounts.Accounts)
@@ -78,11 +77,11 @@ namespace Blum.Services
 
                                 var (timestamp, startTime, endTime, playPasses, isFastFarmingEnabled) = await blumBot.GetBalanceAsync();
 
-                                if (playPasses > 0 && MaxPlays > 0)
+                                if (playPasses > 0 && TelegramSettings.MaxPlays > 0)
                                 {
-                                    int usePasses = (playPasses ?? 0) > MaxPlays ? MaxPlays : (playPasses ?? 0);
+                                    int usePasses = (playPasses ?? 0) > TelegramSettings.MaxPlays ? TelegramSettings.MaxPlays : (playPasses ?? 0);
                                     logger.Info((account, ConsoleColor.DarkCyan), ($"Starting the game. Available play passes: {playPasses ?? 0}. " +
-                                        $"Passes to be used: {usePasses}. Maximum allowed: {MaxPlays}", null));
+                                        $"Passes to be used: {usePasses}. Maximum allowed: {TelegramSettings.MaxPlays}", null));
 
                                     await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
 
