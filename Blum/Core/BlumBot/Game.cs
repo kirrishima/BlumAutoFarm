@@ -52,6 +52,7 @@ namespace Blum.Core
                     {
                         _logger.Success(($"{_accountName}", ConsoleColor.DarkCyan),
                             ($"Finish play in game! Reward: {results.Points}", null));
+                        fails += fails > 0 ? -1 : 0;
                     }
                     else
                     {

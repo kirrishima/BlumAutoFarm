@@ -68,22 +68,23 @@ namespace Blum.Core
             var maxPlaysOption = new Option<int>(
             name: "--max-plays",
             description: $"Sets the max passes amount used for playing games. Can be parsed from '{TelegramSettings.configPath}'.",
-            getDefaultValue: () => 7)
+            getDefaultValue: () => TelegramSettings.MaxPlays)
             {
                 IsRequired = false
             };
 
             maxPlaysOption.AddValidator(result =>
             {
-                var value = result.GetValueOrDefault<int>();
-                if (!TelegramSettings.IsValidMaxPlays(value))
+                if (!result.IsImplicit)
                 {
-                    result.ErrorMessage = $"The provided API ID '{value}' is not valid.";
-                }
-                if (TelegramSettings.IsValidMaxPlays(value))
-                {
+                    var value = result.GetValueOrDefault<int>();
+                    if (!TelegramSettings.IsValidMaxPlays(value))
+                    {
+                        result.ErrorMessage = $"The provided max plays '{value}' is not valid. It must be non-negative number: [0, {int.MaxValue}]";
+                        return;
+                    }
                     TelegramSettings.MaxPlays = value;
-                    logger.Info($"API ID set to: '{TelegramSettings.ApiId}'");
+                    logger.Info($"Max plays is set to: '{TelegramSettings.MaxPlays}'");
                 }
             });
 
@@ -91,6 +92,7 @@ namespace Blum.Core
             {
                 apiIdOption,
                 apiHashOption,
+                maxPlaysOption,
                 CreateConfigCommand(),
                 AddAccountCommand(),
                 ShowAccountsCommand(),
@@ -108,7 +110,6 @@ namespace Blum.Core
                         {
                             var defaultLayout = HelpBuilder.Default.GetLayout().ToList();
 
-                            // Add custom notes for specific commands
                             if (ctx.Command.Name == rootCommand.Name ||
                                 ctx.Command.Name == AddAccountCommand().Name ||
                                 ctx.Command.Name == DeleteAccountCommand().Name ||
@@ -360,15 +361,7 @@ namespace Blum.Core
 
         private static async Task HandleStartFarm()
         {
-            try
-            {
-                TelegramSettings.ParseConfig();
-                await FarmingService.AutoStartBlumFarming();
-            }
-            catch (BlumException ex)
-            {
-                logger.Error($"{ex.Message} Restart the program with valid config values");
-            }
+            await FarmingService.AutoStartBlumFarming();
         }
 
         private static void AddAccount()
