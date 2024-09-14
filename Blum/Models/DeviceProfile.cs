@@ -1,4 +1,5 @@
-﻿public class DeviceProfile
+﻿namespace Blum.Models;
+public class DeviceProfile
 {
     public string DeviceName { get; }
     public string OperatingSystem { get; }
@@ -64,4 +65,17 @@ public static class DeviceProfiles
         "Safari",
         "Mozilla/5.0 (iPhone; CPU iPhone OS 14_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
     );
+
+    private static readonly DeviceProfile[] deviceProfiles =
+    [
+        AndroidGalaxyS21,
+        AndroidPocoX5Pro5G,
+        AndroidPixel5,
+        AndroidOnePlus9,
+        iPhone12,
+        iPhone13Pro,
+        iPhoneSE
+    ];
+
+    public static DeviceProfile[] Profiles => deviceProfiles;
 }
