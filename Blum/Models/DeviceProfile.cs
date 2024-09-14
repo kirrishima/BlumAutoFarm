@@ -45,26 +45,26 @@ public static class DeviceProfiles
         "Mozilla/5.0 (Linux; Android 11.0; OnePlus 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.137 Mobile Safari/537.36"
     );
 
-    public static readonly DeviceProfile iPhone12 = new DeviceProfile(
-        "iPhone 12",
-        "iOS 14.0",
-        "Safari",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
-    );
+    /*    public static readonly DeviceProfile iPhone12 = new DeviceProfile(
+            "iPhone 12",
+            "iOS 14.0",
+            "Safari",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+        );
 
-    public static readonly DeviceProfile iPhone13Pro = new DeviceProfile(
-        "iPhone 13 Pro",
-        "iOS 15.0",
-        "Safari",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
-    );
+        public static readonly DeviceProfile iPhone13Pro = new DeviceProfile(
+            "iPhone 13 Pro",
+            "iOS 15.0",
+            "Safari",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
+        );
 
-    public static readonly DeviceProfile iPhoneSE = new DeviceProfile(
-        "iPhone SE (2nd generation)",
-        "iOS 14.2",
-        "Safari",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 14_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
-    );
+        public static readonly DeviceProfile iPhoneSE = new DeviceProfile(
+            "iPhone SE (2nd generation)",
+            "iOS 14.2",
+            "Safari",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 14_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+        );*/
 
     private static readonly DeviceProfile[] deviceProfiles =
     [
@@ -72,9 +72,9 @@ public static class DeviceProfiles
         AndroidPocoX5Pro5G,
         AndroidPixel5,
         AndroidOnePlus9,
-        iPhone12,
+/*        iPhone12,
         iPhone13Pro,
-        iPhoneSE
+        iPhoneSE*/
     ];
 
     public static DeviceProfile[] Profiles => deviceProfiles;
