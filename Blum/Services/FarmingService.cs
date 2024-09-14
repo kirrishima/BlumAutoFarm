@@ -57,8 +57,9 @@ namespace Blum.Services
                 {
                     try
                     {
-                        BlumBot blumBot = new(fakeWebClient, account, phoneNumber, debugMode: false);
+                        BlumBot blumBot = new(fakeWebClient, account, phoneNumber, logger, debugMode: false);
                         int maxTries = 2;
+                        bool playedGameIn8h = false;
 
                         await Task.Delay(RandomDelayMilliseconds(Delay.Account));
 
@@ -77,15 +78,16 @@ namespace Blum.Services
 
                                 var (timestamp, startTime, endTime, playPasses, isFastFarmingEnabled) = await blumBot.GetBalanceAsync();
 
-                                if (playPasses > 0 && TelegramSettings.MaxPlays > 0)
+                                if (playPasses > 0 && TelegramSettings.MaxPlays > 0 && !playedGameIn8h)
                                 {
                                     int usePasses = (playPasses ?? 0) > TelegramSettings.MaxPlays ? TelegramSettings.MaxPlays : (playPasses ?? 0);
-                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting the game. Available play passes: {playPasses ?? 0}. " +
-                                        $"Passes to be used: {usePasses}. Maximum allowed: {TelegramSettings.MaxPlays}", null));
+                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Starting the game. Passes to be used: {usePasses}.", null));
 
                                     await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
 
                                     await blumBot.PlayGameAsync(usePasses);
+
+                                    playedGameIn8h = true;
                                 }
 
                                 await Task.Delay(RandomDelayMilliseconds(3, 10));
@@ -139,7 +141,7 @@ namespace Blum.Services
                                         int milliseconds = sleepTimeSeconds > int.MaxValue / 1000 ? int.MaxValue : (int)(sleepTimeSeconds * 1000);
 
                                         await Task.Delay(milliseconds);
-
+                                        playedGameIn8h = false;
                                         await blumBot.RefreshUsingTokenAsync();
                                     }
                                     else if (maxTries <= 0)

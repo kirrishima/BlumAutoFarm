@@ -1,5 +1,6 @@
 ﻿using RestSharp;
 using System.Net;
+using Blum.Models;
 
 namespace Blum.Core
 {
@@ -24,7 +25,13 @@ namespace Blum.Core
 
         private void InitializeRestClient(DeviceProfile? deviceProfile, string? proxyUri)
         {
-            _currentProfile = deviceProfile ?? DeviceProfiles.AndroidPocoX5Pro5G;
+            if (deviceProfile is null)
+            {
+                Random random = new Random();
+                int index = random.Next(DeviceProfiles.Profiles.Length);
+                deviceProfile = DeviceProfiles.Profiles[index];
+            }
+            _currentProfile = deviceProfile ?? DeviceProfiles.AndroidPixel5;
 
             _options = new RestClientOptions
             {

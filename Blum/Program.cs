@@ -4,7 +4,6 @@ using Blum.Utilities;
 
 class Program
 {
-    private static Logger logger = new();
     static async Task Main(string[] args)
     {
         TelegramSettings.TryParseConfig(false);

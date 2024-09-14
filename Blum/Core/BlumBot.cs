@@ -17,15 +17,14 @@ namespace Blum.Core
         private static readonly object _configLock = new();
         private bool _disposed = false;
 
-        public BlumBot(FakeWebClient session, string account, string phoneNumber, Logger.LoggingAction? loggingAction = null, bool debugMode = false)
+        public BlumBot(FakeWebClient session, string account, string phoneNumber, Logger logger, bool debugMode = false)
         {
             _session = session;
             _session.SetTimeout(TimeSpan.FromSeconds(60));
             _accountName = account;
             _phoneNumber = phoneNumber;
             _refreshToken = string.Empty;
-            _logger = new Logger(loggingAction ?? Console.Write);
-            _logger.DebugMode = debugMode;
+            _logger = logger;
             _random = new RandomUtility.Random();
             WTelegramLogger = new WTelegramLogger(account);
             WTelegramLogger.GetLogFunction()(-1, $"{new string('-', 128)}\n{new string('\t', 6)}{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} Bot Started\n{new string('-', 128)}");
