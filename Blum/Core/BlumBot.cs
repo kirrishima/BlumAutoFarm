@@ -12,7 +12,6 @@ namespace Blum.Core
         protected readonly string _phoneNumber;
         protected string _refreshToken;
         protected Logger _logger;
-        protected RandomUtility.Random _random;
         protected readonly WTelegramLogger WTelegramLogger;
         private static readonly object _configLock = new();
         private bool _disposed = false;
@@ -25,7 +24,7 @@ namespace Blum.Core
             _phoneNumber = phoneNumber;
             _refreshToken = string.Empty;
             _logger = logger;
-            _random = new RandomUtility.Random();
+            _logger.DebugMode = debugMode;
             WTelegramLogger = new WTelegramLogger(account);
             WTelegramLogger.GetLogFunction()(-1, $"{new string('-', 128)}\n{new string('\t', 6)}{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} Bot Started\n{new string('-', 128)}");
             _client = new Client(Config);
@@ -51,7 +50,6 @@ namespace Blum.Core
             {
                 _session?.Dispose();
                 _client?.Dispose();
-                _random = null;
                 _refreshToken = null;
             }
 
