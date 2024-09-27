@@ -50,14 +50,15 @@ namespace Blum.Services
 
             try
             {
-                RandomUtility.Random random = new();
-                FakeWebClient fakeWebClient = new();
+                BlumBot? blumBot = null;
 
                 while (!exitFlag)
                 {
                     try
                     {
-                        BlumBot blumBot = new(fakeWebClient, account, phoneNumber, logger, debugMode: false);
+                        FakeWebClient fakeWebClient = new();
+                        blumBot = new(fakeWebClient, account, phoneNumber, logger, debugMode: false);
+
                         int maxTries = 2;
                         bool playedGameIn8h = false;
 
@@ -205,6 +206,8 @@ namespace Blum.Services
                         if (!exitFlag)
                         {
                             logger.Info((account, ConsoleColor.DarkCyan), ($"Reconnecting, 65 s", null));
+                            blumBot?.Dispose();
+                            blumBot = null;
                             await Task.Delay(TimeSpan.FromSeconds(65));
                         }
                     }
