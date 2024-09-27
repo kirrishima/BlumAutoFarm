@@ -142,7 +142,12 @@ namespace Blum.Services
 
                                         await Task.Delay(milliseconds);
                                         playedGameIn8h = false;
-                                        await blumBot.RefreshUsingTokenAsync();
+
+                                        if (!await blumBot.RefreshUsingTokenAsync())
+                                        {
+                                            logger.Error((account, ConsoleColor.DarkCyan), ("Failed to refresh, exiting thread...", null));
+                                            return;
+                                        }
                                     }
                                     else if (maxTries <= 0)
                                     {
