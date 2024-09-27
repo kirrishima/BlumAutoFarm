@@ -4,7 +4,7 @@ using WTelegram;
 
 namespace Blum.Core
 {
-    partial class BlumBot
+    partial class BlumBot : IDisposable
     {
         protected readonly FakeWebClient _session;
         protected readonly string _accountName;
@@ -12,9 +12,10 @@ namespace Blum.Core
         protected readonly string _phoneNumber;
         protected string _refreshToken;
         protected Logger _logger;
-        protected readonly WTelegramLogger WTelegramLogger;
+        protected WTelegramLogger WTelegramLogger;
         private static readonly object _configLock = new();
         private bool _disposed = false;
+        private static readonly object _disposeLock = new();
 
         public BlumBot(FakeWebClient session, string account, string phoneNumber, Logger logger, bool debugMode = false)
         {
@@ -26,9 +27,9 @@ namespace Blum.Core
             _logger = logger;
             _logger.DebugMode = debugMode;
             WTelegramLogger = new WTelegramLogger(account);
-            WTelegramLogger.GetLogFunction()(-1, $"{new string('-', 128)}\n{new string('\t', 6)}{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} Bot Started\n{new string('-', 128)}");
-            _client = new Client(Config);
+            WTelegramLogger.GetLogFunction().Invoke(-1, $"{new string('-', 128)}\n{new string('\t', 6)}{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} Bot Started\n{new string('-', 128)}");
             Helpers.Log = WTelegramLogger.GetLogFunction();
+            _client = new Client(Config);
         }
 
         ~BlumBot()
@@ -46,14 +47,28 @@ namespace Blum.Core
         {
             if (_disposed) return;
 
-            if (disposing)
+            lock (_disposeLock)
             {
-                _session?.Dispose();
-                _client?.Dispose();
-                _refreshToken = null;
-            }
+                if (_disposed) return;
 
-            _disposed = true;
+                if (disposing)
+                {
+                    _session?.Dispose();
+                    _client?.Dispose();
+                    WTelegramLogger?.Dispose();
+
+                    _refreshToken = null;
+                    _logger = null;
+                    WTelegramLogger = null;
+
+                    if (_logger != null && _logger.DebugMode)
+                    {
+                        WTelegramLogger?.GetLogFunction()?.Invoke(-1, $"{new string('-', 128)}\n{new string('\t', 6)}{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} Bot Stopped instance disposed\n{new string('-', 128)}");
+                    }
+                }
+
+                _disposed = true;
+            }
         }
 
         string? Config(string what)
@@ -66,7 +81,8 @@ namespace Blum.Core
                     case "api_hash": return TelegramSettings.ApiHash;
                     case "phone_number": return _phoneNumber;
                     case "verification_code":
-                        Console.Write($"({_accountName}) Verification code: "); return Console.ReadLine();
+                        Console.Write($"({_accountName}) Verification code: ");
+                        return Console.ReadLine();
                     case "session_pathname": return Path.GetFullPath(Path.Combine(TelegramSessionsPaths.SessionsFolder, _accountName));
                     default: return null;
                 }
