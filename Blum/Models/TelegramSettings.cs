@@ -1,8 +1,8 @@
-﻿using System.Text;
+﻿using Blum.Exceptions;
+using Blum.Utilities;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Blum.Exceptions;
-using Blum.Utilities;
 
 namespace Blum.Models
 {

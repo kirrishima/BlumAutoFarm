@@ -1,6 +1,6 @@
-﻿using RestSharp;
+﻿using Blum.Models;
+using RestSharp;
 using System.Net;
-using Blum.Models;
 
 namespace Blum.Core
 {

@@ -1,6 +1,6 @@
-﻿using Blum.Utilities;
+﻿using Blum.Models;
+using Blum.Utilities;
 using System.Text.Json;
-using Blum.Models;
 using static Blum.Utilities.RandomUtility.Random;
 
 namespace Blum.Core
