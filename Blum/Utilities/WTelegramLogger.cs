@@ -2,13 +2,22 @@
 
 namespace Blum.Utilities
 {
-    internal class WTelegramLogger
+    internal class WTelegramLogger : IDisposable
     {
         private static readonly object _logLock = new();
         private readonly StreamWriter _streamWriter;
+        private bool _disposed = false;
 
-        private static readonly ConsoleColor[] WTelegramConsoleColor = [ ConsoleColor.DarkGray, ConsoleColor.DarkCyan,
-            ConsoleColor.Cyan, ConsoleColor.Yellow, ConsoleColor.Red, ConsoleColor.Magenta, ConsoleColor.DarkBlue ];
+        private static readonly ConsoleColor[] WTelegramConsoleColor =
+        {
+            ConsoleColor.DarkGray,
+            ConsoleColor.DarkCyan,
+            ConsoleColor.Cyan,
+            ConsoleColor.Yellow,
+            ConsoleColor.Red,
+            ConsoleColor.Magenta,
+            ConsoleColor.DarkBlue
+        };
 
         public WTelegramLogger(string accountName)
         {
@@ -31,6 +40,7 @@ namespace Blum.Utilities
                 if (lvl < 0)
                 {
                     _streamWriter.WriteLine(str);
+                    _streamWriter.Flush();
                 }
                 else
                 {
@@ -40,7 +50,6 @@ namespace Blum.Utilities
 
                 if (lvl > 2)
                 {
-
                     ConsoleColor color = Console.ForegroundColor;
                     Console.ForegroundColor = WTelegramConsoleColor[lvl];
                     Console.WriteLine(str);
@@ -52,6 +61,29 @@ namespace Blum.Utilities
         public Action<int, string> GetLogFunction()
         {
             return LogFunction;
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+
+            if (disposing)
+            {
+                _streamWriter?.Dispose();
+            }
+
+            _disposed = true;
+        }
+
+        ~WTelegramLogger()
+        {
+            Dispose(false);
         }
     }
 }

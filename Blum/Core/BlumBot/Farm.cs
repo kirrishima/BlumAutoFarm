@@ -1,6 +1,7 @@
-﻿using Blum.Utilities;
+﻿using Blum.Models;
+using Blum.Utilities;
 using System.Text.Json;
-using Blum.Models;
+
 namespace Blum.Core
 {
     partial class BlumBot

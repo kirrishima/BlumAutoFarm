@@ -7,7 +7,12 @@
 		<Nullable>enable</Nullable>
 		<SatelliteResourceLanguages>en;ru</SatelliteResourceLanguages>
 		<GenerateDocumentationFile>False</GenerateDocumentationFile>
+		<ApplicationIcon>blum.ico</ApplicationIcon>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <Content Include="blum.ico" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="RestSharp" Version="112.0.0" />

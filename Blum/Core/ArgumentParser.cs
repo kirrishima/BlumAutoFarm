@@ -1,11 +1,11 @@
-﻿using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.Help;
-using System.CommandLine.Parsing;
-using Blum.Exceptions;
+﻿using Blum.Exceptions;
 using Blum.Models;
 using Blum.Services;
 using Blum.Utilities;
+using System.CommandLine;
+using System.CommandLine.Builder;
+using System.CommandLine.Help;
+using System.CommandLine.Parsing;
 
 namespace Blum.Core
 {

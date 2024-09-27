@@ -1,8 +1,9 @@
 ﻿using Blum.Exceptions;
+using Blum.Models;
 using Blum.Utilities;
 using System.Text.Json;
 using TL;
-using Blum.Models;
+using static Blum.Utilities.RandomUtility.Random;
 
 namespace Blum.Core
 {
@@ -33,7 +34,14 @@ namespace Blum.Core
 
             var data = new { refresh = _refreshToken };
             var jsonData = JsonSerializer.Serialize(data);
-            var (_, response, _) = await _session.TryPostAsync(BlumUrls.Refresh, jsonData);
+            var (rawResponse, response, _) = await _session.TryPostAsync(BlumUrls.Refresh, jsonData);
+
+            if (rawResponse?.IsSuccessStatusCode != true)
+            {
+                await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
+                (rawResponse, response, _) = await _session.TryPostAsync(BlumUrls.Refresh, jsonData);
+            }
+
             var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(response ?? "{}");
 
             bool success = false;
