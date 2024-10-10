@@ -30,6 +30,7 @@ namespace Blum.Core
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("RefreshAsync()", null));
 
+            string authToken = _session.GetHeader("Authorization");
             _session.ClearHeaders();
 
             var data = new { refresh = _refreshToken };
@@ -73,6 +74,11 @@ namespace Blum.Core
                     }
                 }
                 success = true;
+            }
+
+            if (!success)
+            {
+                _session.SetHeader("authToken", authToken);
             }
 
             await Task.Delay(1000);

@@ -47,6 +47,7 @@ namespace Blum.Services
             logger.Info((account, ConsoleColor.DarkCyan), ("\u2665 Program is running, please be patient \u2665", null));
 
             bool exitFlag = false;
+            bool playedGameIn8h = false;
 
             try
             {
@@ -60,7 +61,6 @@ namespace Blum.Services
                         blumBot = new(fakeWebClient, account, phoneNumber, logger, debugMode: false);
 
                         int maxTries = 2;
-                        bool playedGameIn8h = false;
 
                         await Task.Delay(RandomDelayMilliseconds(Delay.Account));
 
