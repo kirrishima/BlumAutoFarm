@@ -48,6 +48,18 @@ namespace Blum.Core
                         ($"PlayGame Status: {results.isOK} | Response responseText: {results.TextResponse} | Points: {results.Points}", null)
                     );
 
+                    if (!results.isOK)
+                    {
+                        await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
+                        results = (false, null, null);
+                        results = await ClaimGameAsync(gameIdString);
+
+                        _logger.Debug(
+                            (_accountName, ConsoleColor.DarkCyan),
+                            ($"PlayGame Status: {results.isOK} | Response responseText: {results.TextResponse} | Points: {results.Points}", null)
+                        );
+                    }
+
                     if (results.isOK)
                     {
                         _logger.Success(($"{_accountName}", ConsoleColor.DarkCyan),

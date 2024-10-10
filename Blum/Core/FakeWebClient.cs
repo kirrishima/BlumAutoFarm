@@ -1,6 +1,7 @@
 ﻿using Blum.Models;
 using RestSharp;
 using System.Net;
+using System.Reflection.Metadata.Ecma335;
 
 namespace Blum.Core
 {
@@ -91,6 +92,16 @@ namespace Blum.Core
             {
                 _headers.Add(name, value);
             }
+        }
+
+        public string GetHeader(string name)
+        {
+            if (_headers.ContainsKey(name))
+            {
+                return _headers[name];
+            }
+
+            return string.Empty;
         }
 
         public void ClearHeaders(params string[] names)
