@@ -15,10 +15,10 @@
         public static readonly string FarmingStart = "https://game-domain.blum.codes/api/v1/farming/start";
 
         /// <summary>https://game-domain.blum.codes/api/v1/game/claim</summary>
-        public static readonly string GameClaim = "https://game-domain.blum.codes/api/v1/game/claim";
+        public static readonly string GameClaim = "https://game-domain.blum.codes/api/v2/game/claim";
 
         /// <summary>https://game-domain.blum.codes/api/v1/game/play</summary>
-        public static readonly string GameStart = "https://game-domain.blum.codes/api/v1/game/play";
+        public static readonly string GameStart = "https://game-domain.blum.codes/api/v2/game/play";
 
         /// <summary>https://gateway.blum.codes/v1/auth/refresh</summary>
         public static readonly string Refresh = "https://user-domain.blum.codes/api/v1/auth/refresh";
