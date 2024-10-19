@@ -8,10 +8,18 @@
 		<SatelliteResourceLanguages>en;ru</SatelliteResourceLanguages>
 		<GenerateDocumentationFile>False</GenerateDocumentationFile>
 		<ApplicationIcon>blum.ico</ApplicationIcon>
+		<Version>1.2.4</Version>
+		<Authors>Force</Authors>
+		<RepositoryUrl>https://github.com/kirrishima/BlumAutoFarm</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
+		<GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
+		<GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <Content Include="blum.ico" />
+		<Content Include="blum.ico" />
 	</ItemGroup>
 
 	<ItemGroup>

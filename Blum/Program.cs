@@ -1,32 +1,17 @@
 ﻿using Blum.Core;
 using Blum.Models;
-using System.Text.Json.Serialization;
+using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 class Program
 {
     private static readonly string GitHubApiUrl = "https://api.github.com/repos/kirrishima/BlumAutoFarm/releases/latest";
-    private static readonly string CurrentVersion = "v1.0.0"; // Замените на текущую версию вашего приложения
+    private static Version CurrentVersion = Assembly.GetExecutingAssembly().GetName().Version;
 
     static async Task Main(string[] args)
     {
         TelegramSettings.TryParseConfig(false);
-
-        try
-        {
-            var releaseInfo = await GetLatestReleaseInfo();
-            if (releaseInfo != null && releaseInfo.TagName != CurrentVersion)
-            {
-                Console.WriteLine($"\nNew version available: {releaseInfo.TagName}");
-                Console.WriteLine($"Changelog: {releaseInfo.Body}");
-                Console.WriteLine($"Link: {releaseInfo.HtmlUrl}\n");
-            }
-            else
-            {
-                Console.WriteLine("The latest version is installed.");
-            }
-        }
-        catch { };
 
         if (args.Length == 0)
         {
@@ -36,6 +21,27 @@ class Program
         await ArgumentParser.ParseArgs(args);
     }
 
+    public static async Task PrintNewVersionIfAvailable()
+    {
+        try
+        {
+            var releaseInfo = await GetLatestReleaseInfo();
+
+            Version otherVersion = new Version(releaseInfo.TagName);
+
+            if (releaseInfo != null)
+            {
+                if (CurrentVersion.CompareTo(otherVersion) < 0)
+                {
+                    Console.WriteLine($"\nNew version available: {releaseInfo.TagName}");
+                    Console.WriteLine($"Changelog: {releaseInfo.Body}");
+                    Console.WriteLine($"Link: {releaseInfo.HtmlUrl}\n");
+                }
+            }
+        }
+        catch { };
+    }
+
     private static async Task<ReleaseInfo> GetLatestReleaseInfo()
     {
         using (var client = new HttpClient())
@@ -43,7 +49,11 @@ class Program
             client.DefaultRequestHeaders.Add("User-Agent", $"Blum {CurrentVersion}");
 
             var response = await client.GetStringAsync(GitHubApiUrl);
-            return JsonSerializer.Deserialize<ReleaseInfo>(response);
+            var res = JsonSerializer.Deserialize<ReleaseInfo>(response);
+
+            res.TagName = res.TagName.TrimStart('v');
+
+            return res;
         }
     }
 
