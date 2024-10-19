@@ -1,11 +1,15 @@
 ﻿using Blum.Models;
 using Blum.Utilities;
+using System.Collections.Immutable;
+using System.Net.NetworkInformation;
 using WTelegram;
 
 namespace Blum.Core
 {
     partial class BlumBot : IDisposable
     {
+        private static ImmutableList<string> PayloadServersIDList = ImmutableList<string>.Empty;
+
         protected readonly FakeWebClient _session;
         protected readonly string _accountName;
         protected readonly Client _client;
@@ -13,9 +17,12 @@ namespace Blum.Core
         protected string _refreshToken;
         protected Logger _logger;
         protected WTelegramLogger WTelegramLogger;
+
         private static readonly object _configLock = new();
-        private bool _disposed = false;
         private static readonly object _disposeLock = new();
+        private static readonly object listLock = new();
+
+        private bool _disposed = false;
 
         public BlumBot(FakeWebClient session, string account, string phoneNumber, Logger logger, bool debugMode = false)
         {
@@ -30,6 +37,12 @@ namespace Blum.Core
             WTelegramLogger.GetLogFunction().Invoke(-1, $"{new string('-', 128)}\n{new string('\t', 6)}{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} Bot Started\n{new string('-', 128)}");
             Helpers.Log = WTelegramLogger.GetLogFunction();
             _client = new Client(Config);
+        }
+
+        static BlumBot()
+        {
+            var serversList = GetPayloadServersIDList();
+            PayloadServersIDList = serversList;
         }
 
         ~BlumBot()

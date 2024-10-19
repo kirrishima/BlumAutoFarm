@@ -39,6 +39,19 @@ namespace Blum.Utilities
                 double randomMilliseconds = System.Random.Shared.NextDouble() * (maxMilliseconds - minMilliseconds) + minMilliseconds;
                 return (int)randomMilliseconds;
             }
+
+            /// <summary>
+            /// Returns a random element from the provided list.
+            /// </summary>
+            /// <typeparam name="T">The type of elements in the list, must implement the IList interface.</typeparam>
+            /// <param name="list">The list from which a random element will be selected.</param>
+            /// <returns>A randomly selected element from the list.</returns>
+            public static T GetRandomElement<T>(IList<T> list)
+            {
+                System.Random random = new();
+                int randomIndex = random.Next(list.Count);
+                return list[randomIndex];
+            }
         }
     }
 }

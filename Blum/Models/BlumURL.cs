@@ -15,15 +15,23 @@
         public static readonly string FarmingStart = "https://game-domain.blum.codes/api/v1/farming/start";
 
         /// <summary>https://game-domain.blum.codes/api/v1/game/claim</summary>
-        public static readonly string GameClaim = "https://game-domain.blum.codes/api/v1/game/claim";
+        public static readonly string GameClaim = "https://game-domain.blum.codes/api/v2/game/claim";
 
         /// <summary>https://game-domain.blum.codes/api/v1/game/play</summary>
-        public static readonly string GameStart = "https://game-domain.blum.codes/api/v1/game/play";
+        public static readonly string GameStart = "https://game-domain.blum.codes/api/v2/game/play";
 
         /// <summary>https://gateway.blum.codes/v1/auth/refresh</summary>
         public static readonly string Refresh = "https://user-domain.blum.codes/api/v1/auth/refresh";
 
         /// <summary>https://game-domain.blum.codes/api/v1/daily-reward?offset=-180</summary>
         public static readonly string ClaimDailyReward = "https://game-domain.blum.codes/api/v1/daily-reward?offset=-180";
+
+        /// <summary> https://raw.githubusercontent.com/zuydd/database/main/blum.json </summary>
+        public static readonly string PayloadEndpointsDatabase = "https://raw.githubusercontent.com/zuydd/database/main/blum.json";
+
+        public static string GetGameClaimPayloadURL(string payloadServerID)
+        {
+            return $"https://{payloadServerID}.vercel.app/api/blum";
+        }
     }
 }

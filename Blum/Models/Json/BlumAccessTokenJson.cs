@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Blum.Models
+namespace Blum.Models.Json
 {
     public class BlumAccessTokenJson
     {

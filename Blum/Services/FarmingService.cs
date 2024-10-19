@@ -12,6 +12,8 @@ namespace Blum.Services
 
         public static async Task AutoStartBlumFarming()
         {
+            await Program.PrintNewVersionIfAvailable();
+
             try
             {
                 AccountService accountManager = new();
@@ -61,8 +63,6 @@ namespace Blum.Services
                         blumBot = new(fakeWebClient, account, phoneNumber, logger, debugMode: false);
 
                         int maxTries = 2;
-
-                        await Task.Delay(RandomDelayMilliseconds(Delay.Account));
 
                         await blumBot.LoginAsync();
 
