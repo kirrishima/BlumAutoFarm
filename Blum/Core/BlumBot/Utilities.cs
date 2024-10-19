@@ -1,11 +1,14 @@
-﻿using System.Text.Json;
+﻿using Blum.Models;
+using Blum.Models.Json;
+using System.Collections.Immutable;
+using System.Text.Json;
 using System.Web;
 
 namespace Blum.Core
 {
     partial class BlumBot
     {
-        private static string? ValidateGameId(object? gameId)
+        protected static string? ValidateGameId(object? gameId)
         {
             if (gameId is null)
                 return null;
@@ -18,7 +21,7 @@ namespace Blum.Core
                 return null;
         }
 
-        private static string SplitAndProcessURL(string URL)
+        protected static string SplitAndProcessURL(string URL)
         {
             string[] parts = URL.Split(new[] { "tgWebAppData=" }, StringSplitOptions.None);
             if (parts.Length > 1)
@@ -28,6 +31,61 @@ namespace Blum.Core
                 return decodedData;
             }
             return URL;
+        }
+
+        protected static ImmutableList<string> GetPayloadServersIDList()
+        {
+            string json;
+
+            using (var client = new HttpClient())
+            {
+                json = client.GetStringAsync(BlumUrls.PayloadEndpointsDatabase).Result;
+            }
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            var root = JsonSerializer.Deserialize<PayloadServersListJson>(json, options);
+
+            return (root?.PayloadServers
+                .Where(s => s.Status == 1)
+                .Select(s => s.Id)
+                .ToList() ?? [])
+                .ToImmutableList();
+        }
+
+        public void PrintPayloadServersIDAsync()
+        {
+            var ids = PayloadServersIDList;
+
+            foreach (var id in ids)
+            {
+                Console.WriteLine(id);
+            }
+        }
+
+        public void AddElement(string element)
+        {
+            lock (listLock)
+            {
+                if (!PayloadServersIDList.Contains(element))
+                {
+                    PayloadServersIDList = PayloadServersIDList.Add(element);
+                }
+            }
+        }
+
+        public void RemoveElement(string element)
+        {
+            lock (listLock)
+            {
+                if (PayloadServersIDList.Contains(element))
+                {
+                    PayloadServersIDList = PayloadServersIDList.Remove(element);
+                }
+            }
         }
     }
 }
