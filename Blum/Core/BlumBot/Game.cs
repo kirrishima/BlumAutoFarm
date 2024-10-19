@@ -1,4 +1,5 @@
 ﻿using Blum.Models;
+using Blum.Models.Json;
 using Blum.Utilities;
 using System.Text.Json;
 using static Blum.Utilities.RandomUtility.Random;
@@ -10,11 +11,20 @@ namespace Blum.Core
         public async Task PlayGameAsync(int playPasses)
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("PlayGameAsync()", null));
+
             int fails = 0;
+            int gamesPlayed = 0;
+
             while (playPasses > 0)
             {
                 try
                 {
+                    if (gamesPlayed == 21)
+                    {
+                        gamesPlayed = 0;
+                        await RefreshUsingTokenAsync();
+                    }
+
                     await Task.Delay(RandomDelayMilliseconds(Delay.Play));
 
                     object? gameId = await StartGameAsync();
@@ -24,9 +34,12 @@ namespace Blum.Core
                     {
                         _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan),
                             ($"Couldn't start play in game! play passes: {playPasses}", null));
+
                         _logger.Debug(Logger.LogMessageType.Error,
-                            ($"gameId: {gameId}, is string: {gameId is string}, is Json String: {gameId is JsonElement j && j.ValueKind == JsonValueKind.String}",
+
+                        ($"gameId: {gameId}, is string: {gameId is string}, is Json String: {gameId is JsonElement j && j.ValueKind == JsonValueKind.String}",
                             ConsoleColor.Yellow));
+
                         if (fails == 0)
                         {
                             _logger.Info(($"{_accountName}", ConsoleColor.DarkCyan), ("Waiting for 60 seconds before retry...", null));
@@ -40,6 +53,8 @@ namespace Blum.Core
 
                     await Task.Delay(RandomDelayMilliseconds(Delay.ClaimGame));
 
+                    gamesPlayed++;
+
                     (bool isOK, string? TextResponse, int? Points) results = (false, null, null);
                     results = await ClaimGameAsync(gameIdString);
 
@@ -47,18 +62,6 @@ namespace Blum.Core
                         (_accountName, ConsoleColor.DarkCyan),
                         ($"PlayGame Status: {results.isOK} | Response responseText: {results.TextResponse} | Points: {results.Points}", null)
                     );
-
-                    if (!results.isOK)
-                    {
-                        await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
-                        results = (false, null, null);
-                        results = await ClaimGameAsync(gameIdString);
-
-                        _logger.Debug(
-                            (_accountName, ConsoleColor.DarkCyan),
-                            ($"PlayGame Status: {results.isOK} | Response responseText: {results.TextResponse} | Points: {results.Points}", null)
-                        );
-                    }
 
                     if (results.isOK)
                     {
@@ -89,13 +92,10 @@ namespace Blum.Core
 
             var result = await _session.TryPostAsync(BlumUrls.GameStart);
             var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(result.responseContent ?? "{}");
-            await Task.Delay(3000);
 
             _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"StartGameAsync raw json: {result.restResponse}\nAs string: {result.responseContent}", null));
             _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"StartGameAsync responseJson:", null));
             _logger.DebugDictionary(responseJson);
-
-            await Task.Delay(1000);
 
             if (responseJson?.TryGetValue("gameId", out object? obj) == true)
             {
@@ -108,32 +108,95 @@ namespace Blum.Core
             return null;
         }
 
-        public async Task<(bool IsReturnedOK, string? ResponseAsText, int? Points)> ClaimGameAsync(string gameId)
+        public async Task<(bool IsReturnedOK, string? ResponseAsText, int? Points)> ClaimGameAsync(string gameId, int dogs = 0)
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimGameAsync()", null));
-            int points = RandomPoints();
-            BlumGameJson data = new()
-            {
-                GameId = gameId,
-                Points = points
-            };
-            var jsonData = JsonSerializer.Serialize(data);
 
-            var result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
-            if (result.restResponse?.IsSuccessStatusCode != true)
+            int points = RandomPoints();
+            var payload = await CreatePayload(gameId, points, dogs);
+
+            if (payload is not null)
             {
-                await Task.Delay(1000);
-                result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
+                var jsonData = JsonSerializer.Serialize(new { payload });
+
+                var result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
+                if (result.restResponse?.IsSuccessStatusCode != true)
+                {
+                    await Task.Delay(3000);
+                    result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
+                }
+
+                _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"\nClaimGame raw json: {result.restResponse}\nAs string: {result.responseContent}", null));
+
+                if (result.restResponse == null || result.responseContent == null)
+                    return (false, result.restResponse?.Content ?? null, null);
+                else if (result.responseContent.Equals("OK"))
+                    return (true, null, points);
+                else
+                    return (false, result.responseContent, points);
             }
 
-            _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"\nClaimGame raw json: {result.restResponse}\nAs string: {result.responseContent}", null));
-
-            if (result.restResponse == null || result.responseContent == null)
-                return (false, result.restResponse?.Content ?? null, null);
-            else if (result.responseContent.Equals("OK"))
-                return (true, null, points);
-            else
-                return (false, result.responseContent, points);
+            return (false, null, null);
         }
+
+
+        protected async Task<string?> CreatePayload(string gameID, int points, int dogs = 0)
+        {
+            BlumGameJson data = new()
+            {
+                GameId = gameID,
+                Points = points,
+                DogsPoints = dogs
+            };
+
+            var jsonData = JsonSerializer.Serialize(data);
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            ErrorResponse? errorResponse = null;
+
+            do
+            {
+                string server;
+
+                lock (listLock)
+                {
+                    var servers = PayloadServersIDList;
+
+                    if (!servers.Any())
+                    {
+                        /*throw new Exceptions.BlumFatalError("No servers for getting payload available. Can't claim game's rewards.");*/
+                        return null;
+                    }
+
+                    server = GetRandomElement(servers);
+                }
+
+                var (restResponse, responseContent, exception) = await _session.TryPostAsync(BlumUrls.GetGameClaimPayloadURL(server), jsonData);
+
+                errorResponse = JsonSerializer.Deserialize<ErrorResponse>(responseContent ?? "{}", options);
+
+                if (errorResponse?.Error != null || exception != null)
+                {
+                    RemoveElement(server);
+                }
+                else
+                {
+                    if (restResponse?.IsSuccessStatusCode == true)
+                    {
+                        using JsonDocument doc = JsonDocument.Parse(responseContent ?? "");
+                        if (doc.RootElement.TryGetProperty("payload", out JsonElement value))
+                        {
+                            return value.GetString();
+                        }
+                    }
+                }
+            }
+            while (true);
+        }
+
     }
 }
