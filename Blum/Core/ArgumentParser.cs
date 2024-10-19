@@ -39,7 +39,7 @@ namespace Blum.Core
 
                 if (!result.IsImplicit)
                 {
-                    if (string.IsNullOrEmpty(value) || !TelegramSettings.IsValidApiId(value))
+                    if (!TelegramSettings.IsValidApiId(value))
                     {
                         result.ErrorMessage = $"The provided API ID '{value}' is not valid.";
                         return;
@@ -55,7 +55,7 @@ namespace Blum.Core
 
                 if (!result.IsImplicit)
                 {
-                    if (!string.IsNullOrEmpty(value) || !TelegramSettings.IsValidApiHash(value))
+                    if (!TelegramSettings.IsValidApiHash(value))
                     {
                         result.ErrorMessage = $"The provided API hash '{value}' is not valid.";
                         return;
