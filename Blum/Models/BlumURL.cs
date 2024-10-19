@@ -25,5 +25,13 @@
 
         /// <summary>https://game-domain.blum.codes/api/v1/daily-reward?offset=-180</summary>
         public static readonly string ClaimDailyReward = "https://game-domain.blum.codes/api/v1/daily-reward?offset=-180";
+
+        /// <summary> https://raw.githubusercontent.com/zuydd/database/main/blum.json </summary>
+        public static readonly string PayloadEndpointsDatabase = "https://raw.githubusercontent.com/zuydd/database/main/blum.json";
+
+        public static string GetGameClaimPayloadURL(string payloadServerID)
+        {
+            return $"https://{payloadServerID}.vercel.app/api/blum";
+        }
     }
 }
