@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace Blum.Core
 {
-    partial class BlumBot
+    internal partial class BlumBot
     {
         public async Task<(bool, string?)> ClaimDailyRewardAsync()
         {

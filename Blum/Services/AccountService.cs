@@ -3,6 +3,7 @@ using Blum.Models;
 using Blum.Utilities;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using static Blum.Models.AppFilepaths;
 
 namespace Blum.Services
 {
@@ -10,14 +11,13 @@ namespace Blum.Services
     {
         private readonly string _filePath;
         private readonly Encryption _aes;
-        private static readonly Logger _logger = new();
-        public static readonly string DefaultAccountsFilepath = Path.Combine(TelegramSettings.settingsDirectory, "accounts.dat");
+        public static Logger? Logger { get; set; } = null;
 
         public AccountService(string? filePath = null)
         {
             var aes = new Encryption(TelegramSettings.ApiHash);
 
-            _filePath = filePath ?? DefaultAccountsFilepath;
+            _filePath = filePath ?? TelegramSessions.AccountsDataFilePath;
             _aes = aes;
         }
 
@@ -135,8 +135,8 @@ namespace Blum.Services
             {
                 accountsData.Accounts.Remove(foundAccount);
 
-                string sessionFilepath = Path.Combine(TelegramSessionsPaths.SessionsFolder, accountName);
-                string sessionLogfilePath = TelegramSessionsPaths.GetWTelegramLogFilePath(accountName);
+                string sessionFilepath = Path.Combine(TelegramSessions.SessionsFolderPath, accountName);
+                string sessionLogfilePath = TelegramSessions.GetWTelegramLogFilePath(accountName);
 
                 if (File.Exists(sessionFilepath))
                 {
@@ -165,7 +165,7 @@ namespace Blum.Services
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 string jsonContent = JsonSerializer.Serialize(accountsData, options);
                 string encryptedJson = _aes.Encrypt(jsonContent);
-                File.WriteAllText(_filePath, encryptedJson);
+                SaveWriteToFile(_filePath, encryptedJson);
             }
             catch (Exception ex)
             {
@@ -183,13 +183,13 @@ namespace Blum.Services
 
                 if (!IsValidPhoneNumber(account.PhoneNumber, out string _))
                 {
-                    _logger.Warning($"Warning: Phone number '{account.PhoneNumber}' is not valid and will be removed.");
+                    Logger?.Warning($"Warning: Phone number '{account.PhoneNumber}' is not valid and will be removed.");
                     isValid = false;
                 }
 
                 if (!IsValidSessionName(account.Name, out string _))
                 {
-                    _logger.Warning($"Warning: Account name '{account.Name}' is not valid and will be removed.");
+                    Logger?.Warning($"Warning: Account name '{account.Name}' is not valid and will be removed.");
                     isValid = false;
                 }
 
@@ -219,7 +219,7 @@ namespace Blum.Services
             {
                 if (!account.Enabled)
                 {
-                    _logger.Warning($"Warning: Account'{account.Name}' is disabled and will not be used.");
+                    Logger?.Warning($"Warning: Account'{account.Name}' is disabled and will not be used.");
                     enabledAccounts.Remove(account);
                 }
             }

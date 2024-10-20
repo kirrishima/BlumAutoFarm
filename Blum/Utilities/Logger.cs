@@ -1,6 +1,6 @@
 ﻿namespace Blum.Utilities
 {
-    internal class Logger
+    public class Logger
     {
         public delegate void LoggingAction(string message);
 
@@ -83,7 +83,7 @@
             return message.PadLeft(message.Length + padding).PadRight(maxLogMessageLength);
         }
 
-        virtual protected void Log(string message, LogMessageType type)
+        protected virtual void Log(string message, LogMessageType type)
         {
             lock (_consoleLock)
             {
@@ -99,7 +99,7 @@
             }
         }
 
-        virtual protected void Log(LogMessageType type, string separator = " | ", params (string message, ConsoleColor? color)[] messages)
+        protected virtual void Log(LogMessageType type, string separator = " | ", params (string message, ConsoleColor? color)[] messages)
         {
             lock (_consoleLock)
             {

@@ -6,7 +6,7 @@ using static Blum.Utilities.RandomUtility.Random;
 
 namespace Blum.Core
 {
-    partial class BlumBot
+    internal partial class BlumBot
     {
         public async Task PlayGameAsync(int playPasses)
         {

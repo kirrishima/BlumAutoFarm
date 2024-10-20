@@ -1,4 +1,5 @@
-﻿using Blum.Models;
+﻿using System.Text;
+using static Blum.Models.AppFilepaths.TelegramSessions;
 
 namespace Blum.Utilities
 {
@@ -21,15 +22,15 @@ namespace Blum.Utilities
 
         public WTelegramLogger(string accountName)
         {
-            string path = Path.Combine(TelegramSessionsPaths.SessionsFolder, TelegramSessionsPaths.GetWTelegramLogFilePath(accountName));
-            _streamWriter = new StreamWriter(path, append: true);
+            string path = Path.Combine(SessionsFolderPath, GetWTelegramLogFilePath(accountName));
+            _streamWriter = new StreamWriter(path, append: true, encoding: Encoding.UTF8, bufferSize: 1024);
         }
 
         static WTelegramLogger()
         {
-            if (!Directory.Exists(TelegramSessionsPaths.SessionsFolder))
+            if (!Directory.Exists(SessionsFolderPath))
             {
-                Directory.CreateDirectory(TelegramSessionsPaths.SessionsFolder);
+                Directory.CreateDirectory(SessionsFolderPath);
             }
         }
 

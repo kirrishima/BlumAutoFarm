@@ -1,8 +1,8 @@
 ﻿using Blum.Exceptions;
 using Blum.Utilities;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using static Blum.Models.AppFilepaths;
 
 namespace Blum.Models
 {
@@ -21,16 +21,12 @@ namespace Blum.Models
         /// </summary>
         public static string? Proxy;
 
-        private static readonly (int Min, int Max) DefaultPointsRange = (250, 280);
-        private static readonly int DefaultMaxPlays = 7;
+        private static readonly (int Min, int Max) DefaultPointsRange = (180, 220);
+        private static readonly int DefaultMaxPlays = 14;
 
         public static (int Min, int Max) PointsRange = DefaultPointsRange;
         public static int MaxPlays = DefaultMaxPlays;
-        /// <summary>
-        /// Filepath for config input/output
-        /// </summary>
-        public static readonly string settingsDirectory = "telegram";
-        public static readonly string configPath = Path.Combine(settingsDirectory, "telegram_settings.json");
+
         //private static readonly ;
         private static readonly JsonSerializerOptions options = new()
         {
@@ -40,10 +36,6 @@ namespace Blum.Models
 
         static TelegramSettings()
         {
-            if (!Directory.Exists(settingsDirectory))
-            {
-                Directory.CreateDirectory(settingsDirectory);
-            }
             TryParseConfig(false);
         }
 
@@ -54,9 +46,9 @@ namespace Blum.Models
         /// <exception cref="BlumException"></exception>
         public static void ParseConfig()
         {
-            if (File.Exists(configPath))
+            if (File.Exists(ConfigPath))
             {
-                string jsonString = File.ReadAllText(configPath);
+                string jsonString = File.ReadAllText(ConfigPath);
 
                 try
                 {
@@ -101,15 +93,19 @@ namespace Blum.Models
             }
         }
 
-
+        /// <summary>
+        /// Save version of <see cref="ParseConfig"/>, will not throw exceptions.
+        /// </summary>
+        /// <param name="verbose">If true, error messages will be printed to the console</param>
+        /// <returns><see cref="bool"/> if config parsed successfully</returns>
         public static bool TryParseConfig(bool verbose = true)
         {
             Logger logger = new();
             logger.DebugMode = verbose;
 
-            if (File.Exists(configPath))
+            if (File.Exists(ConfigPath))
             {
-                string jsonString = File.ReadAllText(configPath);
+                string jsonString = File.ReadAllText(ConfigPath);
 
                 bool areApiSettingsValid = true;
                 try
@@ -117,31 +113,31 @@ namespace Blum.Models
                     var settings = JsonSerializer.Deserialize<JsonSettings>(jsonString);
                     if (settings == null)
                     {
-                        logger.Debug(Logger.LogMessageType.Error, $"Failed to deserialize JSON from {configPath}");
+                        logger.Debug(Logger.LogMessageType.Error, $"Failed to deserialize JSON from {ConfigPath}");
                         return false;
                     }
 
                     if (settings.ApiId == null)
                     {
-                        logger.Debug(Logger.LogMessageType.Error, $"Missing 'api_id' in config {configPath}");
+                        logger.Debug(Logger.LogMessageType.Error, $"Missing 'api_id' in config {ConfigPath}");
                         areApiSettingsValid = false;
                     }
 
                     if (!IsValidApiId(settings.ApiId ?? string.Empty))
                     {
-                        logger.Debug(Logger.LogMessageType.Error, $"Invalid 'api_id' in config {configPath}");
+                        logger.Debug(Logger.LogMessageType.Error, $"Invalid 'api_id' in config {ConfigPath}");
                         areApiSettingsValid = false;
                     }
 
                     if (settings.ApiHash == null)
                     {
-                        logger.Debug(Logger.LogMessageType.Error, $"Missing 'api_hash' in config {configPath}");
+                        logger.Debug(Logger.LogMessageType.Error, $"Missing 'api_hash' in config {ConfigPath}");
                         areApiSettingsValid = false;
                     }
 
                     if (!IsValidApiHash(settings.ApiHash ?? string.Empty))
                     {
-                        logger.Debug(Logger.LogMessageType.Error, $"Invalid 'api_hash' in config {configPath}");
+                        logger.Debug(Logger.LogMessageType.Error, $"Invalid 'api_hash' in config {ConfigPath}");
                         areApiSettingsValid = false;
                     }
 
@@ -159,7 +155,7 @@ namespace Blum.Models
                         var (x, y) = (settings.farmingSettings.PointsRange[0], settings.farmingSettings.PointsRange[1]);
                         if (!IsValidPointsRange(x, y))
                         {
-                            logger.Debug(Logger.LogMessageType.Error, $"Invalid points range: range must be from 1 to 280, and the lower bound must be less than the upper bound.");
+                            logger.Debug(Logger.LogMessageType.Error, $"Invalid points range: range must be of positive integers, and the lower bound must be less than the upper bound.");
                             areFarmingSettingsValid = false;
                         }
                         if (!IsValidMaxPlays(settings.farmingSettings.MaxPlays))
@@ -185,22 +181,45 @@ namespace Blum.Models
             }
             else
             {
-                logger.Debug(Logger.LogMessageType.Error, $"{configPath}: file not found");
                 return false;
             }
         }
 
-        public static bool IsValidApiId(string ApiId) => int.TryParse(ApiId, out int _);
+        /// <summary>
+        /// Method that checks api_id for validity. The api_id must be a string, representing integer that fits in 32 bits
+        /// </summary>
+        /// <param name="ApiId"></param>
+        /// <returns></returns>
+        public static bool IsValidApiId(string? ApiId) => int.TryParse(ApiId, out int _);
 
-        public static bool IsValidApiHash(string ApiHash) => !string.IsNullOrWhiteSpace(ApiHash);
+        /// <summary>
+        /// Method that checks api_hash. Checks only for a non-empty string,
+        /// and for a non-string of spaces. Cannot guarantee that api_hash is 100% valid.
+        /// </summary>
+        /// <param name="ApiHash"></param>
+        /// <returns></returns>
+        public static bool IsValidApiHash(string? ApiHash) => !string.IsNullOrWhiteSpace(ApiHash);
 
+        /// <summary>
+        /// Method for validating max plays limit
+        /// </summary>
+        /// <param name="maxPlays"></param>
+        /// <returns></returns>
         public static bool IsValidMaxPlays(int maxPlays) => int.IsPositive(maxPlays);
 
+        /// <summary>
+        /// Method that validates provided points range. 
+        /// </summary>
+        /// <param name="Min">Min points</param>
+        /// <param name="Max">Max points</param>
+        /// <returns></returns>
         public static bool IsValidPointsRange(int Min, int Max)
         {
-            if (Min <= 0 || Min > DefaultPointsRange.Max)
-                return false;
-            if (Max <= 0 || Max > DefaultPointsRange.Max)
+            /*            if (Min <= 0 || Min > DefaultPointsRange.Max)
+                            return false;
+                        if (Max <= 0 || Max > DefaultPointsRange.Max)
+                            return false;*/
+            if (Min <= 0 || Max <= 0)
                 return false;
             if (Min > Max)
                 return false;
@@ -214,12 +233,8 @@ namespace Blum.Models
         /// <returns></returns>
         public static string CreateEmptyConfigFile()
         {
-            using (FileStream fs = File.Create(configPath))
-            {
-                byte[] info = new UTF8Encoding(true).GetBytes(_defaultJsonString);
-                fs.Write(info, 0, info.Length);
-            }
-            return Path.GetFullPath(configPath);
+            SaveWriteToFile(ConfigPath, _defaultJsonString);
+            return Path.GetFullPath(ConfigPath);
         }
 
         public static string CreateConfigFileWithCurrentSettings()
@@ -239,12 +254,9 @@ namespace Blum.Models
             };
             jsonString = JsonSerializer.Serialize(a, options);
 
-            using (FileStream fs = File.Create(configPath))
-            {
-                byte[] info = new UTF8Encoding(true).GetBytes(jsonString);
-                fs.Write(info, 0, info.Length);
-            }
-            return Path.GetFullPath(configPath);
+            SaveWriteToFile(ConfigPath, jsonString);
+
+            return Path.GetFullPath(ConfigPath);
         }
 
         /// <summary>

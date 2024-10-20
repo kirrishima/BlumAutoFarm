@@ -6,7 +6,7 @@ using System.Web;
 
 namespace Blum.Core
 {
-    partial class BlumBot
+    internal partial class BlumBot
     {
         protected static string? ValidateGameId(object? gameId)
         {
