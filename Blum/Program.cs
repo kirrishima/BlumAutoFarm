@@ -4,6 +4,7 @@ using Blum.Services;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 internal class Program
 {
@@ -30,7 +31,6 @@ internal class Program
         try
         {
             var releaseInfo = await GetLatestReleaseInfo();
-
             Version otherVersion = new Version(releaseInfo.TagName);
 
             if (releaseInfo != null)
@@ -53,10 +53,15 @@ internal class Program
             client.DefaultRequestHeaders.Add("User-Agent", $"Blum {CurrentVersion}");
 
             var response = await client.GetStringAsync(GitHubApiUrl);
+
             var res = JsonSerializer.Deserialize<ReleaseInfo>(response);
 
-            res.TagName = res.TagName.TrimStart('v');
+            var versionMatch = Regex.Match(res.TagName, @"\d+(\.\d+){1,3}");
 
+            if (versionMatch.Success)
+            {
+                res.TagName = versionMatch.Value;
+            }
             return res;
         }
     }
