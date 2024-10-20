@@ -26,20 +26,20 @@ The Blum Core CLI is a command-line tool for managing and interacting with the B
 
 3. Run
 ```Bash
-Blum.exe --create-config
+Blum.exe create-config
 ```
 After config file is created, edit it with your api_id and api_hash from [my.telegram.org](https://my.telegram.org)
 
 4. Run
 ```Bash
-Blum.exe --add-account
+Blum.exe add-account
 ```
 This will add an telegram account.
 
 > [!IMPORTANT]\
-> Before adding an account, you need to add api_hash to the configuration file or enter it BEFORE calling the `--add-account` using `--api-hash <api-hash>` as it's required for encryption. This also means that after adding a session, you should not change the api_hash to avoid data loss.
+> Before adding an account, you need to add api_hash to the configuration file or enter it BEFORE calling the `add-account` using `--api-hash <api-hash>` as it's required for encryption. This also means that after adding a session, you should not change the api_hash to avoid data loss.
 
-5. Now, ypu can simply run the `Blum.exe` or `Blum.exe --start-farm`, this will
+5. Now, ypu can simply run the `Blum.exe` or `Blum.exe start-farm`, this will
 
 ## Installation
 
@@ -69,7 +69,7 @@ Generates a configuration file with the provided API ID and hash. If only one or
 
 Usage:
 ```bash
-Blum.exe --create-config [--api-id <API_ID>] [--api-hash <API_HASH>]
+Blum.exe create-config [--api-id <API_ID>] [--api-hash <API_HASH>]
 ```
 
 #### Add Account
@@ -78,7 +78,7 @@ Adds an account to the configuration. This command requires that a valid `api_ha
 
 Usage:
 ```bash
-Blum.exe --add-account
+Blum.exe add-account
 ```
 
 #### Delete Account
@@ -87,7 +87,7 @@ Deletes an account from the configuration.
 
 Usage:
 ```bash
-Blum.exe --delete-account
+Blum.exe delete-account
 ```
 
 #### Start Farm
@@ -96,7 +96,7 @@ Starts the farming process for all configured accounts. Ensure that both `api_id
 
 Usage:
 ```bash
-Blum.exe --start-farm
+Blum.exe start-farm
 ```
 
 #### Help
@@ -112,7 +112,7 @@ Blum.exe --help
 
 1. **Creating a configuration file:**
    ```bash
-   Blum.exe --create-config --api-id your_api_id --api-hash your_api_hash
+   Blum.exe create-config --api-id your_api_id --api-hash your_api_hash
    ```
    
   or
@@ -124,12 +124,12 @@ This will create empty config file, or with existing settings, if they are valid
 
 2. **Adding a new account:**
    ```bash
-   Blum.exe --add-account --api-hash your_api_hash
+   Blum.exe add-account
    ```
 
 3. **Starting the farming process:**
    ```bash
-   Blum.exe --start-farm
+   Blum.exe start-farm
    ```
 
 ## Error Handling
@@ -138,6 +138,6 @@ If an error occurs during the execution of any command, the tool will display an
 
 Common issues include:
 - Invalid API credentials: Ensure the `api_id` and `api_hash` are correct.
-- Missing configuration: Make sure to run [`--create-config`](#create-config) before attempting to add accounts or start farming.
+- Missing configuration: Make sure to run [`create-config`](#create-config) before attempting to add accounts or start farming.
 
 For any unexpected errors, the program will prompt you to press any key to exit.
