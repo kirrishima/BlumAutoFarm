@@ -172,11 +172,6 @@ namespace Blum.Services
                                     }
                                     else if (endTime != null && timestamp != null)
                                     {
-                                        lock (_consoleLock)
-                                        {
-                                            logFileStreamWriter.FlushAsync().Wait();
-                                        }
-
                                         long sleepTimeSeconds = endTime - timestamp ?? 0;
                                         TimeSpan sleepDuration = TimeSpan.FromSeconds(sleepTimeSeconds);
                                         string durationFormatted = string.Format("{0:D2} hours, {1:D2} minutes, {2:D2} seconds",
@@ -185,6 +180,12 @@ namespace Blum.Services
                                              sleepDuration.Seconds);
 
                                         logger.Info((account, ConsoleColor.DarkCyan), ($"Sleep for {durationFormatted}.", null));
+
+                                        lock (_consoleLock)
+                                        {
+                                            logFileStreamWriter.FlushAsync().Wait();
+                                        }
+
                                         maxTries++;
 
                                         int milliseconds = sleepTimeSeconds > int.MaxValue / 1000 ? int.MaxValue : (int)(sleepTimeSeconds * 1000);
