@@ -6,6 +6,7 @@ using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Help;
 using System.CommandLine.Parsing;
+using static Blum.Models.AppFilepaths;
 
 namespace Blum.Core
 {
@@ -17,7 +18,7 @@ namespace Blum.Core
         {
             var apiIdOption = new Option<string>(
             name: "--api-id",
-            description: $"Sets the API ID for this session. Can be parsed from '{TelegramSettings.configPath}'.",
+            description: $"Sets the API ID for this session. Can be parsed from '{ConfigPath}'.",
             getDefaultValue: () => string.Empty
             )
             {
@@ -26,7 +27,7 @@ namespace Blum.Core
 
             var apiHashOption = new Option<string>(
                 name: "--api-hash",
-                description: $"Sets the API hash for this session. Can be parsed from '{TelegramSettings.configPath}'.",
+                description: $"Sets the API hash for this session. Can be parsed from '{ConfigPath}'.",
                 getDefaultValue: () => string.Empty
             )
             {
@@ -55,7 +56,7 @@ namespace Blum.Core
 
                 if (!result.IsImplicit)
                 {
-                    if (!string.IsNullOrEmpty(value) || !TelegramSettings.IsValidApiHash(value))
+                    if (!TelegramSettings.IsValidApiHash(value))
                     {
                         result.ErrorMessage = $"The provided API hash '{value}' is not valid.";
                         return;
@@ -67,7 +68,7 @@ namespace Blum.Core
 
             var maxPlaysOption = new Option<int>(
             name: "--max-plays",
-            description: $"Sets the max passes amount used for playing games. Can be parsed from '{TelegramSettings.configPath}'.",
+            description: $"Sets the max passes amount used for playing games. Can be parsed from '{ConfigPath}'.",
             getDefaultValue: () => TelegramSettings.MaxPlays)
             {
                 IsRequired = false
@@ -157,7 +158,7 @@ namespace Blum.Core
         {
             var apiIdOption = new Option<string>(
                 name: "--api-id",
-                description: $"Sets the API ID for this session. Can be parsed from '{TelegramSettings.configPath}' and will be saved to same path."
+                description: $"Sets the API ID for this session. Can be parsed from '{ConfigPath}' and will be saved to same path."
             )
             {
                 IsRequired = false
@@ -165,13 +166,13 @@ namespace Blum.Core
 
             var apiHashOption = new Option<string>(
                 name: "--api-hash",
-                description: $"Sets the API hash for this session. Can be parsed from '{TelegramSettings.configPath}' and will be saved to same path."
+                description: $"Sets the API hash for this session. Can be parsed from '{ConfigPath}' and will be saved to same path."
             )
             {
                 IsRequired = false
             };
 
-            var command = new Command("create-config", $"Generates an configuration file ({TelegramSettings.configPath}), if it's not exists, with provided API ID and Hash. If none or only one of them provided, will be generated empty file")
+            var command = new Command("create-config", $"Generates an configuration file ({ConfigPath}), if it's not exists, with provided API ID and Hash. If none or only one of them provided, will be generated empty file")
             {
                 apiIdOption,
                 apiHashOption
@@ -184,15 +185,17 @@ namespace Blum.Core
 
                 if (apiIdProvided || apiHashProvided)
                 {
-                    short count = 0;
                     if (apiIdProvided)
                     {
                         if (!TelegramSettings.IsValidApiId(apiId))
                         {
                             logger.Warning($"The provided API ID '{apiId}' is not valid.");
-                            return;
                         }
-                        count++;
+                        else
+                        {
+                            TelegramSettings.ApiId = apiId;
+                            logger.Info($"API ID set to '{TelegramSettings.ApiId}'");
+                        }
                     }
 
                     if (apiHashProvided)
@@ -200,32 +203,25 @@ namespace Blum.Core
                         if (!TelegramSettings.IsValidApiHash(apiHash))
                         {
                             logger.Warning($"The provided API hash '{apiHash}' is not valid.");
-                            return;
                         }
-                        count++;
+                        else
+                        {
+                            TelegramSettings.ApiHash = apiHash;
+                            logger.Info($"API Hash set to '{TelegramSettings.ApiHash}'");
+                        }
                     }
-
-                    if (count == 2)
-                    {
-                        TelegramSettings.ApiId = apiId;
-                        logger.Info($"API ID set to '{TelegramSettings.ApiId}'");
-
-                        TelegramSettings.ApiHash = apiHash;
-                        logger.Info($"API Hash set to '{TelegramSettings.ApiHash}'");
-
-                        HandleCreateConfig();
-                    }
-                    else
-                    {
-                        logger.Warning($"{TelegramSettings.configPath} was not created as not both valid API ID and API Hash were passed. You have to specify them both.\n" +
-                            $"Pro Tip: if you want to change only one of the parameters, you can specify them before all commands using the global options --api-id and --api-hash");
-                    }
+                    HandleCreateConfig();
+                    /*                    else
+                                        {
+                                            logger.Warning($"{ConfigPath} was not created as not both valid API ID and API Hash were passed. You have to specify them both.\n" +
+                                                $"Pro Tip: if you want to change only one of the parameters, you can specify them before all commands using the global options --api-id and --api-hash");
+                                        }*/
                 }
                 else
                 {
-                    logger.Info($"No parameters were provided. {TelegramSettings.configPath} might be left unchanged or created empty");
-                    logger.Info($"API ID remained unchanged: '{TelegramSettings.ApiId}'");
-                    logger.Info($"API Hash  remained unchanged: '{TelegramSettings.ApiHash}'");
+                    logger.Info($"No parameters were provided. {ConfigPath} might be left unchanged or created empty");
+                    /*                    logger.Info($"API ID remained unchanged: '{TelegramSettings.ApiId}'");
+                                        logger.Info($"API Hash  remained unchanged: '{TelegramSettings.ApiHash}'");*/
 
                     HandleCreateConfig();
                 }

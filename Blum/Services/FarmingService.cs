@@ -2,13 +2,55 @@
 using Blum.Exceptions;
 using Blum.Models;
 using Blum.Utilities;
+using System.Text;
 using static Blum.Utilities.RandomUtility.Random;
 
 namespace Blum.Services
 {
     internal class FarmingService
     {
-        private static readonly Logger logger = new();
+        private static readonly string _logFilePath;
+        internal static readonly object _consoleLock = new object();
+        private static readonly StreamWriter logFileStreamWriter;
+        static bool _disposed = false;
+
+        private static readonly Logger logger = new(
+            (message) =>
+            {
+                lock (_consoleLock)
+                {
+                    Console.Write(message);
+                    logFileStreamWriter?.Write(message);
+                }
+            });
+
+        static FarmingService()
+        {
+            _logFilePath = AppFilepaths.LogsFilePath;
+            AppFilepaths.EnsureDirectories(_logFilePath);
+            File.Create(_logFilePath).Close();
+            logFileStreamWriter = new StreamWriter(_logFilePath, append: false, encoding: Encoding.UTF8, bufferSize: 1024);
+        }
+
+        internal static void OnProcessExit(object sender, EventArgs e)
+        {
+            lock (_consoleLock)
+            {
+                if (!_disposed)
+                {
+                    logFileStreamWriter.Flush();
+                    logFileStreamWriter.Dispose();
+                    _disposed = true;
+                }
+            }
+        }
+
+        internal static void OnCancelKeyPress(object sender, ConsoleCancelEventArgs e)
+        {
+            e.Cancel = true;
+            OnProcessExit(sender, e);
+            Environment.Exit(0);
+        }
 
         public static async Task AutoStartBlumFarming()
         {
@@ -17,6 +59,7 @@ namespace Blum.Services
             try
             {
                 AccountService accountManager = new();
+                AccountService.Logger = logger;
 
                 var accounts = accountManager.GetAccounts();
                 int accountTotal = accounts.Accounts.Count;
@@ -129,6 +172,11 @@ namespace Blum.Services
                                     }
                                     else if (endTime != null && timestamp != null)
                                     {
+                                        lock (_consoleLock)
+                                        {
+                                            logFileStreamWriter.FlushAsync().Wait();
+                                        }
+
                                         long sleepTimeSeconds = endTime - timestamp ?? 0;
                                         TimeSpan sleepDuration = TimeSpan.FromSeconds(sleepTimeSeconds);
                                         string durationFormatted = string.Format("{0:D2} hours, {1:D2} minutes, {2:D2} seconds",
@@ -169,6 +217,13 @@ namespace Blum.Services
                                         logger.Error((account, ConsoleColor.DarkCyan), ($"Error in farming management: {ex.InnerException.Message}", null));
                                     }
                                 }
+                                finally
+                                {
+                                    lock (_consoleLock)
+                                    {
+                                        logFileStreamWriter.FlushAsync().Wait();
+                                    }
+                                }
                                 await Task.Delay(TimeSpan.FromSeconds(10));
                             }
                             catch (BlumFatalError ex)
@@ -183,6 +238,13 @@ namespace Blum.Services
                                 if (ex.InnerException != null)
                                 {
                                     logger.Error((account, ConsoleColor.DarkCyan), ($"Error: {ex.InnerException.Message}", null));
+                                }
+                            }
+                            finally
+                            {
+                                lock (_consoleLock)
+                                {
+                                    logFileStreamWriter.FlushAsync().Wait();
                                 }
                             }
                         }
@@ -203,6 +265,10 @@ namespace Blum.Services
                     }
                     finally
                     {
+                        lock (_consoleLock)
+                        {
+                            logFileStreamWriter.FlushAsync().Wait();
+                        }
                         if (!exitFlag)
                         {
                             logger.Info((account, ConsoleColor.DarkCyan), ($"Reconnecting, 65 s", null));
@@ -225,6 +291,13 @@ namespace Blum.Services
                 if (ex.InnerException != null)
                 {
                     logger.Error((account, ConsoleColor.DarkCyan), ($"Error: {ex.InnerException.Message}", null));
+                }
+            }
+            finally
+            {
+                lock (_consoleLock)
+                {
+                    logFileStreamWriter.FlushAsync().Wait();
                 }
             }
         }

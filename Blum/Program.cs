@@ -1,5 +1,6 @@
 ﻿using Blum.Core;
 using Blum.Models;
+using Blum.Services;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -11,7 +12,10 @@ class Program
 
     static async Task Main(string[] args)
     {
-        TelegramSettings.TryParseConfig(false);
+        TelegramSettings.TryParseConfig(true);
+
+        AppDomain.CurrentDomain.ProcessExit += new EventHandler(FarmingService.OnProcessExit);
+        Console.CancelKeyPress += new ConsoleCancelEventHandler(FarmingService.OnCancelKeyPress);
 
         if (args.Length == 0)
         {
@@ -60,12 +64,12 @@ class Program
     private class ReleaseInfo
     {
         [JsonPropertyName("tag_name")]
-        public string TagName { get; set; }
+        public string? TagName { get; set; }
 
         [JsonPropertyName("body")]
-        public string Body { get; set; }
+        public string? Body { get; set; }
 
         [JsonPropertyName("html_url")]
-        public string HtmlUrl { get; set; }
+        public string? HtmlUrl { get; set; }
     }
 }

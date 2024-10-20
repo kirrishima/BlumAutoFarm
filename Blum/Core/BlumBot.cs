@@ -1,7 +1,7 @@
 ﻿using Blum.Models;
+using Blum.Services;
 using Blum.Utilities;
 using System.Collections.Immutable;
-using System.Net.NetworkInformation;
 using WTelegram;
 
 namespace Blum.Core
@@ -86,7 +86,7 @@ namespace Blum.Core
 
         string? Config(string what)
         {
-            lock (_configLock)
+            lock (FarmingService._consoleLock)
             {
                 switch (what)
                 {
@@ -96,7 +96,7 @@ namespace Blum.Core
                     case "verification_code":
                         Console.Write($"({_accountName}) Verification code: ");
                         return Console.ReadLine();
-                    case "session_pathname": return Path.GetFullPath(Path.Combine(TelegramSessionsPaths.SessionsFolder, _accountName));
+                    case "session_pathname": return Path.GetFullPath(Path.Combine(AppFilepaths.TelegramSessions.SessionsFolderPath, _accountName));
                     default: return null;
                 }
             }

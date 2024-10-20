@@ -1,6 +1,6 @@
 ﻿namespace Blum.Utilities
 {
-    internal class Logger
+    public class Logger
     {
         public delegate void LoggingAction(string message);
 
