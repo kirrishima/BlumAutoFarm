@@ -2,7 +2,7 @@
 {
     internal class LoggerWithoutDateInOutput : Logger
     {
-        override protected void Log(string message, LogMessageType type)
+        protected override void Log(string message, LogMessageType type)
         {
             lock (_consoleLock)
             {
@@ -14,7 +14,7 @@
             }
         }
 
-        override protected void Log(LogMessageType type, string separator = " | ", params (string message, ConsoleColor? color)[] messages)
+        protected override void Log(LogMessageType type, string separator = " | ", params (string message, ConsoleColor? color)[] messages)
         {
             lock (_consoleLock)
             {

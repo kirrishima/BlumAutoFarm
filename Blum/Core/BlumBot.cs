@@ -6,7 +6,7 @@ using WTelegram;
 
 namespace Blum.Core
 {
-    partial class BlumBot : IDisposable
+    internal partial class BlumBot : IDisposable
     {
         private static ImmutableList<string> PayloadServersIDList = ImmutableList<string>.Empty;
 
@@ -84,7 +84,7 @@ namespace Blum.Core
             }
         }
 
-        string? Config(string what)
+        private string? Config(string what)
         {
             lock (FarmingService._consoleLock)
             {

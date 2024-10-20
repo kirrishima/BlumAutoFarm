@@ -1,6 +1,6 @@
 ﻿namespace Blum.Models
 {
-    readonly struct BlumUrls
+    internal readonly struct BlumUrls
     {
         /// <summary>https://game-domain.blum.codes/api/v1/user/balance</summary>
         public static readonly string Balance = "https://game-domain.blum.codes/api/v1/user/balance";

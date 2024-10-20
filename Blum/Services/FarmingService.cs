@@ -12,7 +12,7 @@ namespace Blum.Services
         private static readonly string _logFilePath;
         internal static readonly object _consoleLock = new object();
         private static readonly StreamWriter logFileStreamWriter;
-        static bool _disposed = false;
+        private static bool _disposed = false;
 
         private static readonly Logger logger = new(
             (message) =>

@@ -8,7 +8,7 @@ using static Blum.Utilities.RandomUtility.Random;
 
 namespace Blum.Core
 {
-    partial class BlumBot
+    internal partial class BlumBot
     {
         public void CloseSession()
         {

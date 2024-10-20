@@ -5,12 +5,12 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-class Program
+internal class Program
 {
     private static readonly string GitHubApiUrl = "https://api.github.com/repos/kirrishima/BlumAutoFarm/releases/latest";
     private static Version CurrentVersion = Assembly.GetExecutingAssembly().GetName().Version;
 
-    static async Task Main(string[] args)
+    private static async Task Main(string[] args)
     {
         TelegramSettings.TryParseConfig(true);
 
