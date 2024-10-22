@@ -11,7 +11,7 @@ namespace Blum.Core
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("GetBalanceAsync()", null));
 
-            var (_, response, _) = await _session.TryGetAsync(BlumUrls.Balance);
+            var (_, response, _) = await _session.TryGetAsync(BlumUrls.BALANCE);
 
             _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"GetBalanceAsync json: {response}", null));
 

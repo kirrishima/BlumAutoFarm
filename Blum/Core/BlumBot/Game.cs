@@ -90,7 +90,7 @@ namespace Blum.Core
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("StartGameAsync()", null));
 
-            var result = await _session.TryPostAsync(BlumUrls.GameStart);
+            var result = await _session.TryPostAsync(BlumUrls.GAME_START);
             var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(result.responseContent ?? "{}");
 
             _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"StartGameAsync raw json: {result.restResponse}\nAs string: {result.responseContent}", null));
@@ -119,11 +119,11 @@ namespace Blum.Core
             {
                 var jsonData = JsonSerializer.Serialize(new { payload });
 
-                var result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
+                var result = await _session.TryPostAsync(BlumUrls.GAME_CLAIM, jsonData);
                 if (result.restResponse?.IsSuccessStatusCode != true)
                 {
                     await Task.Delay(3000);
-                    result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
+                    result = await _session.TryPostAsync(BlumUrls.GAME_CLAIM, jsonData);
                 }
 
                 _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"\nClaimGame raw json: {result.restResponse}\nAs string: {result.responseContent}", null));
