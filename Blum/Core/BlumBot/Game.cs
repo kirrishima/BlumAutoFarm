@@ -108,12 +108,19 @@ namespace Blum.Core
             return null;
         }
 
-        public async Task<(bool IsReturnedOK, string? ResponseAsText, int? Points)> ClaimGameAsync(string gameId, int dogs = 0)
+        public async Task<(bool IsReturnedOK, string? ResponseAsText, int? Points)> ClaimGameAsync(string gameId)
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimGameAsync()", null));
 
-            int points = RandomPoints();
-            var payload = await CreatePayload(gameId, points, dogs);
+            int points = RandomBlumPoints();
+            int dogs = 0;
+
+            if (await IsDogsEligible())
+            {
+                dogs = RandomDogsPoints(points);
+            }
+
+            var payload = await CreatePayloadAsync(gameId, points, dogs);
 
             if (payload is not null)
             {
@@ -139,8 +146,29 @@ namespace Blum.Core
             return (false, null, null);
         }
 
+        public async Task<bool> IsDogsEligible()
+        {
+            bool eligible = false;
 
-        protected async Task<string?> CreatePayload(string gameID, int points, int dogs = 0)
+            try
+            {
+                var resp = await _session.TryGetAsync(BlumUrls.DOGS_ELIGIBILITY);
+
+                if (resp.ResponseContent is not null)
+                {
+                    var respJson = JsonSerializer.Deserialize<Dictionary<string, object>>(resp.ResponseContent);
+                    if (respJson?.TryGetValue("eligible", out object? isEligible) == true)
+                    {
+                        eligible = (bool)isEligible;
+                    }
+                }
+            }
+            catch { }
+
+            return eligible;
+        }
+
+        protected async Task<string?> CreatePayloadAsync(string gameID, int points, int dogs = 0)
         {
             BlumGameJson data = new()
             {
