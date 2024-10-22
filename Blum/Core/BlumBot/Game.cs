@@ -90,7 +90,7 @@ namespace Blum.Core
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("StartGameAsync()", null));
 
-            var result = await _session.TryPostAsync(BlumUrls.GameStart);
+            var result = await _session.TryPostAsync(BlumUrls.GAME_START);
             var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(result.responseContent ?? "{}");
 
             _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"StartGameAsync raw json: {result.restResponse}\nAs string: {result.responseContent}", null));
@@ -108,22 +108,29 @@ namespace Blum.Core
             return null;
         }
 
-        public async Task<(bool IsReturnedOK, string? ResponseAsText, int? Points)> ClaimGameAsync(string gameId, int dogs = 0)
+        public async Task<(bool IsReturnedOK, string? ResponseAsText, int? Points)> ClaimGameAsync(string gameId)
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimGameAsync()", null));
 
-            int points = RandomPoints();
-            var payload = await CreatePayload(gameId, points, dogs);
+            int points = RandomBlumPoints();
+            int dogs = 0;
+
+            if (await IsDogsEligible())
+            {
+                dogs = RandomDogsPoints(points);
+            }
+
+            var payload = await CreatePayloadAsync(gameId, points, dogs);
 
             if (payload is not null)
             {
                 var jsonData = JsonSerializer.Serialize(new { payload });
 
-                var result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
+                var result = await _session.TryPostAsync(BlumUrls.GAME_CLAIM, jsonData);
                 if (result.restResponse?.IsSuccessStatusCode != true)
                 {
                     await Task.Delay(3000);
-                    result = await _session.TryPostAsync(BlumUrls.GameClaim, jsonData);
+                    result = await _session.TryPostAsync(BlumUrls.GAME_CLAIM, jsonData);
                 }
 
                 _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"\nClaimGame raw json: {result.restResponse}\nAs string: {result.responseContent}", null));
@@ -139,8 +146,29 @@ namespace Blum.Core
             return (false, null, null);
         }
 
+        public async Task<bool> IsDogsEligible()
+        {
+            bool eligible = false;
 
-        protected async Task<string?> CreatePayload(string gameID, int points, int dogs = 0)
+            try
+            {
+                var resp = await _session.TryGetAsync(BlumUrls.DOGS_ELIGIBILITY);
+
+                if (resp.ResponseContent is not null)
+                {
+                    var respJson = JsonSerializer.Deserialize<Dictionary<string, object>>(resp.ResponseContent);
+                    if (respJson?.TryGetValue("eligible", out object? isEligible) == true)
+                    {
+                        eligible = (bool)isEligible;
+                    }
+                }
+            }
+            catch { }
+
+            return eligible;
+        }
+
+        protected async Task<string?> CreatePayloadAsync(string gameID, int points, int dogs = 0)
         {
             BlumGameJson data = new()
             {

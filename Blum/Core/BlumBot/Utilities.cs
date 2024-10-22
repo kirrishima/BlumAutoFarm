@@ -39,7 +39,7 @@ namespace Blum.Core
 
             using (var client = new HttpClient())
             {
-                json = client.GetStringAsync(BlumUrls.PayloadEndpointsDatabase).Result;
+                json = client.GetStringAsync(BlumUrls.PAYLOAD_ENDPOINTS_DATABASE).Result;
             }
 
             var options = new JsonSerializerOptions

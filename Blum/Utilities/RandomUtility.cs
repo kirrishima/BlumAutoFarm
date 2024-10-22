@@ -17,7 +17,9 @@ namespace Blum.Utilities
                 BeforeRequest
             }
 
-            public static int RandomPoints() => System.Random.Shared.Next(Range.Min, Range.Max);
+            public static int RandomBlumPoints() => System.Random.Shared.Next(Range.Min, Range.Max);
+
+            public static int RandomDogsPoints(int BlumPoints) => Math.Abs(BlumPoints - System.Random.Shared.Next(Range.Max - Range.Min));
 
             public static int RandomDelayMilliseconds(Delay type) => type switch
             {

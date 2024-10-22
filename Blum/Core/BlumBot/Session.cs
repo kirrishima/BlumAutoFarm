@@ -36,12 +36,12 @@ namespace Blum.Core
 
             var data = new { refresh = _refreshToken };
             var jsonData = JsonSerializer.Serialize(data);
-            var (rawResponse, response, _) = await _session.TryPostAsync(BlumUrls.Refresh, jsonData);
+            var (rawResponse, response, _) = await _session.TryPostAsync(BlumUrls.REFRESH, jsonData);
 
             if (rawResponse?.IsSuccessStatusCode != true)
             {
                 await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
-                (rawResponse, response, _) = await _session.TryPostAsync(BlumUrls.Refresh, jsonData);
+                (rawResponse, response, _) = await _session.TryPostAsync(BlumUrls.REFRESH, jsonData);
             }
 
             var responseJson = JsonSerializer.Deserialize<Dictionary<string, object>>(response ?? "{}");
@@ -94,12 +94,12 @@ namespace Blum.Core
             {
                 var jsonData = new { query = await GetTGWebDataAsync() };
                 var json = JsonSerializer.Serialize(jsonData);
-                var (RawResponse, ResponseContent, exception) = await _session.TryPostAsync(BlumUrls.ProviderMiniApp, json);
+                var (RawResponse, ResponseContent, exception) = await _session.TryPostAsync(BlumUrls.PROVIDER_MINIAPP, json);
 
                 if (RawResponse?.IsSuccessful != true || exception != null)
                 {
                     await Task.Delay(3000);
-                    (RawResponse, ResponseContent, exception) = await _session.TryPostAsync(BlumUrls.ProviderMiniApp, json);
+                    (RawResponse, ResponseContent, exception) = await _session.TryPostAsync(BlumUrls.PROVIDER_MINIAPP, json);
                 }
 
                 if (RawResponse?.IsSuccessful != true || exception != null)

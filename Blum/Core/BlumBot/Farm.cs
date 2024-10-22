@@ -13,7 +13,7 @@ namespace Blum.Core
             string? responseText = null;
             try
             {
-                var response = await _session.TryGetAsync(BlumUrls.ClaimDailyReward);
+                var response = await _session.TryGetAsync(BlumUrls.CLAIM_DAILY_REWARD);
 
                 var json = response.ResponseContent;
                 var res = JsonSerializer.Deserialize<BlumDailyRewardJson>(json ?? "{}");
@@ -31,7 +31,7 @@ namespace Blum.Core
                 if (response.RestResponse?.IsSuccessStatusCode == true)
                 {
                     await Task.Delay(1000);
-                    response = await _session.TryPostAsync(BlumUrls.ClaimDailyReward);
+                    response = await _session.TryPostAsync(BlumUrls.CLAIM_DAILY_REWARD);
                 }
                 responseText = response.ResponseContent;
                 return responseText == "OK" ? (true, reward) : (false, responseText);
@@ -46,7 +46,7 @@ namespace Blum.Core
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimFarmAsync()", null));
 
-            var result = await _session.TryPostAsync(BlumUrls.FarmingClaim);
+            var result = await _session.TryPostAsync(BlumUrls.FARMING_CLAIM);
 
             _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
             if (result.restResponse?.IsSuccessStatusCode != true)
@@ -54,7 +54,7 @@ namespace Blum.Core
                 _logger.Debug((_accountName, ConsoleColor.DarkCyan), ("ClaimFarmAsync request failed, retry...", null));
 
                 await Task.Delay(1000);
-                result = await _session.TryPostAsync(BlumUrls.FarmingClaim);
+                result = await _session.TryPostAsync(BlumUrls.FARMING_CLAIM);
 
                 _logger.Debug((_accountName, ConsoleColor.DarkCyan), ($"Claim raw response: {result.restResponse} | As string: {result.responseContent}", null));
             }
@@ -74,11 +74,11 @@ namespace Blum.Core
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("StartFarmingAsync()", null));
 
-            var result = await _session.TryPostAsync(BlumUrls.FarmingStart);
+            var result = await _session.TryPostAsync(BlumUrls.FARMING_START);
             if (result.restResponse?.IsSuccessStatusCode != true)
             {
                 await Task.Delay(1000);
-                await _session.TryPostAsync(BlumUrls.FarmingStart);
+                await _session.TryPostAsync(BlumUrls.FARMING_START);
             }
 
             await Task.Delay(1000);
