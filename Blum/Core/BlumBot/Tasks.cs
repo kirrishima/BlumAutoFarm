@@ -9,7 +9,18 @@ namespace Blum.Core
     {
         public async Task InitTasksKeywordsDictionaryAsync()
         {
-            var externalDataResponse = (await _session.TryGetAsync(BlumUrls.PAYLOAD_ENDPOINTS_DATABASE)).ResponseContent ?? "{}";
+            string externalDataResponse;
+            try
+            {
+                using (HttpClient client = new())
+                {
+                    externalDataResponse = await (await client.PostAsync(BlumUrls.PAYLOAD_ENDPOINTS_DATABASE, null)).Content.ReadAsStringAsync();
+                }
+            }
+            catch
+            {
+                externalDataResponse = "{}";
+            }
 
             var dataJson = JsonSerializer.Deserialize<TasksJson.ExternalTasksData>(externalDataResponse, new JsonSerializerOptions
             {
