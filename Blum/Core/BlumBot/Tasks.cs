@@ -7,14 +7,14 @@ namespace Blum.Core
 {
     partial class BlumBot
     {
-        public async Task InitTasksKeywordsDictionaryAsync()
+        public static Dictionary<string, string> InitTasksKeywordsDictionaryAsync()
         {
             string externalDataResponse;
             try
             {
                 using (HttpClient client = new())
                 {
-                    externalDataResponse = await (await client.PostAsync(BlumUrls.PAYLOAD_ENDPOINTS_DATABASE, null)).Content.ReadAsStringAsync();
+                    externalDataResponse = client.GetStringAsync(BlumUrls.PAYLOAD_ENDPOINTS_DATABASE).Result;
                 }
             }
             catch
@@ -27,7 +27,7 @@ namespace Blum.Core
                 PropertyNameCaseInsensitive = true
             });
 
-            _tasksKeywords = dataJson?.Tasks?.ToDictionary(task => task.Id, task => task.Answer) ?? [];
+            return dataJson?.Tasks?.ToDictionary(task => task.Id, task => task.Answer) ?? [];
         }
 
         public async Task<List<TasksJson.TaskModel>> GetTasksAsync()
@@ -73,7 +73,7 @@ namespace Blum.Core
                     task.Kind != "QUEST" &&
                     task.Status != "FINISHED" &&
                     task.Type != "PROGRESS_TARGET" &&
-                    (task.ValidationType == "KEYWORD" ? _tasksKeywords?.ContainsKey(task.Id) == true : true);
+                    (task.ValidationType == "KEYWORD" ? _tasksKeywords.Value?.ContainsKey(task.Id) == true : true);
 
                 foreach (var section in respJson)
                 {
@@ -95,7 +95,8 @@ namespace Blum.Core
                                     {
                                         if (task.ValidationType == "KEYWORD")
                                         {
-                                            _tasksKeywords.TryGetValue(task.Id, out var keyword);
+                                            string? keyword = null;
+                                            _tasksKeywords.Value?.TryGetValue(task.Id, out keyword);
 
                                             if (keyword != null)
                                             {
@@ -176,7 +177,8 @@ namespace Blum.Core
         {
             try
             {
-                _tasksKeywords.TryGetValue(taskId, out var keyword);
+                string? keyword = null;
+                _tasksKeywords.Value?.TryGetValue(taskId, out keyword);
 
                 if (keyword == null)
                 {
@@ -209,8 +211,6 @@ namespace Blum.Core
 
         public async Task ProcessAndCompleteAvailableTasksAsync()
         {
-            await InitTasksKeywordsDictionaryAsync();
-
             var tasks = await GetTasksAsync();
 
             if (tasks.Count == 0)

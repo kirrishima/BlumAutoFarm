@@ -86,10 +86,7 @@ namespace Blum.Services
             catch (Exception ex)
             {
                 logger.Error(ex.Message);
-                if (ex.InnerException != null)
-                {
-                    logger.Error(ex.InnerException.Message);
-                }
+                logger.PrintAllExeceptionsData(ex.InnerException);
             }
         }
 
@@ -228,10 +225,7 @@ namespace Blum.Services
                                 catch (Exception ex)
                                 {
                                     logger.Error((account, ConsoleColor.DarkCyan), ($"Error in farming management: {ex.Message}", null));
-                                    if (ex.InnerException != null)
-                                    {
-                                        logger.Error((account, ConsoleColor.DarkCyan), ($"Error in farming management: {ex.InnerException.Message}", null));
-                                    }
+                                    logger.PrintAllExeceptionsData(ex.InnerException);
                                 }
                                 finally
                                 {
@@ -251,10 +245,7 @@ namespace Blum.Services
                             catch (Exception ex)
                             {
                                 logger.Error((account, ConsoleColor.DarkCyan), ($"Error: {ex.Message}", null));
-                                if (ex.InnerException != null)
-                                {
-                                    logger.Error((account, ConsoleColor.DarkCyan), ($"Error: {ex.InnerException.Message}", null));
-                                }
+                                logger.PrintAllExeceptionsData(ex.InnerException);
                             }
                             finally
                             {
@@ -274,10 +265,7 @@ namespace Blum.Services
                     catch (Exception ex)
                     {
                         logger.Error((account, ConsoleColor.DarkCyan), ($"Session error:  {ex.Message}", null));
-                        if (ex.InnerException != null)
-                        {
-                            logger.Error((account, ConsoleColor.DarkCyan), ($"Session error: {ex.InnerException.Message}", null));
-                        }
+                        logger.PrintAllExeceptionsData(ex.InnerException);
                     }
                     finally
                     {
@@ -304,10 +292,7 @@ namespace Blum.Services
             catch (Exception ex)
             {
                 logger.Error((account, ConsoleColor.DarkCyan), ($"Error: {ex.Message}", null));
-                if (ex.InnerException != null)
-                {
-                    logger.Error((account, ConsoleColor.DarkCyan), ($"Error: {ex.InnerException.Message}", null));
-                }
+                logger.PrintAllExeceptionsData(ex.InnerException);
             }
             finally
             {

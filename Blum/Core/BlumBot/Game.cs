@@ -190,7 +190,7 @@ namespace Blum.Core
             {
                 string server;
 
-                lock (listLock)
+                lock (_listLock)
                 {
                     var servers = PayloadServersIDList;
 

@@ -17,11 +17,12 @@ namespace Blum.Core
         protected string _refreshToken;
         protected Logger _logger;
         protected WTelegramLogger WTelegramLogger;
-        protected Dictionary<string, string> _tasksKeywords = [];
+        protected static Lazy<Dictionary<string, string>?> _tasksKeywords = new(InitTasksKeywordsDictionaryAsync);
 
         private static readonly object _configLock = new();
         private static readonly object _disposeLock = new();
-        private static readonly object listLock = new();
+        private static readonly object _listLock = new();
+        private static readonly object _tasksLock = new();
 
         private bool _disposed = false;
 
