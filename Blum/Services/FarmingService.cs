@@ -9,9 +9,10 @@ namespace Blum.Services
 {
     internal class FarmingService
     {
-        private static readonly string _logFilePath;
+        private static bool _initializedSW = false;
+        private static string? _logFilePath;
         internal static readonly object _consoleLock = new object();
-        private static readonly StreamWriter logFileStreamWriter;
+        private static StreamWriter? logFileStreamWriter;
         private static bool _disposed = false;
 
         private static readonly Logger logger = new(
@@ -24,22 +25,26 @@ namespace Blum.Services
                 }
             });
 
-        static FarmingService()
+        private static void InitStreamWriter()
         {
-            _logFilePath = AppFilepaths.LogsFilePath;
-            AppFilepaths.EnsureDirectories(_logFilePath);
-            File.Create(_logFilePath).Close();
-            logFileStreamWriter = new StreamWriter(_logFilePath, append: false, encoding: Encoding.UTF8, bufferSize: 1024);
+            if (!_initializedSW)
+            {
+                _initializedSW = true;
+                _logFilePath = AppFilepaths.LogsFilePath;
+                AppFilepaths.EnsureDirectories(_logFilePath);
+                File.Create(_logFilePath).Close();
+                logFileStreamWriter = new StreamWriter(_logFilePath, append: false, encoding: Encoding.UTF8, bufferSize: 1024);
+            }
         }
 
         internal static void OnProcessExit(object sender, EventArgs e)
         {
             lock (_consoleLock)
             {
-                if (!_disposed)
+                if (!_disposed && _initializedSW)
                 {
-                    logFileStreamWriter.Flush();
-                    logFileStreamWriter.Dispose();
+                    logFileStreamWriter?.Flush();
+                    logFileStreamWriter?.Dispose();
                     _disposed = true;
                 }
             }
@@ -55,6 +60,7 @@ namespace Blum.Services
         public static async Task AutoStartBlumFarming()
         {
             await Program.PrintNewVersionIfAvailable();
+            InitStreamWriter();
 
             try
             {
@@ -183,7 +189,7 @@ namespace Blum.Services
 
                                         lock (_consoleLock)
                                         {
-                                            logFileStreamWriter.FlushAsync().Wait();
+                                            logFileStreamWriter?.FlushAsync().Wait();
                                         }
 
                                         maxTries++;
@@ -222,7 +228,7 @@ namespace Blum.Services
                                 {
                                     lock (_consoleLock)
                                     {
-                                        logFileStreamWriter.FlushAsync().Wait();
+                                        logFileStreamWriter?.FlushAsync().Wait();
                                     }
                                 }
                                 await Task.Delay(TimeSpan.FromSeconds(10));
@@ -245,7 +251,7 @@ namespace Blum.Services
                             {
                                 lock (_consoleLock)
                                 {
-                                    logFileStreamWriter.FlushAsync().Wait();
+                                    logFileStreamWriter?.FlushAsync().Wait();
                                 }
                             }
                         }
@@ -268,7 +274,7 @@ namespace Blum.Services
                     {
                         lock (_consoleLock)
                         {
-                            logFileStreamWriter.FlushAsync().Wait();
+                            logFileStreamWriter?.FlushAsync().Wait();
                         }
                         if (!exitFlag)
                         {
@@ -298,7 +304,7 @@ namespace Blum.Services
             {
                 lock (_consoleLock)
                 {
-                    logFileStreamWriter.FlushAsync().Wait();
+                    logFileStreamWriter?.FlushAsync().Wait();
                 }
             }
         }
