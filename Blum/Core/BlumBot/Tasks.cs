@@ -30,7 +30,7 @@ namespace Blum.Core
                     PropertyNameCaseInsensitive = true
                 });
 
-                var allTasks = CollectTasks(respJson);
+                var allTasks = await CollectTasks(respJson);
                 _logger.Info(($"{_accountName}", ConsoleColor.DarkCyan), ($"Collected {allTasks.Count} tasks", null));
                 return allTasks;
             }
@@ -41,42 +41,77 @@ namespace Blum.Core
             }
         }
 
-        private List<TasksJson.TaskModel> CollectTasks(List<TasksJson.TaskResponse> respJson)
+        private async Task<List<TasksJson.TaskModel>> CollectTasks(List<TasksJson.TaskResponse> respJson)
         {
             var collectedTasks = new List<TasksJson.TaskModel>();
 
-            foreach (var task in respJson)
+            // Получение внешних данных (возможно стоит вынести в отдельный метод и использовать один раз)
+            var externalDataUrl = "https://raw.githubusercontent.com/zuydd/database/main/blum.json";
+            var externalDataResponse = (await _session.TryGetAsync(externalDataUrl)).ResponseContent ?? "{}";
+
+            var dataJson = JsonSerializer.Deserialize<TasksJson.ExternalTasksData>(externalDataResponse, new JsonSerializerOptions
             {
-                if (task.SectionType == "HIGHLIGHTS")
+                PropertyNameCaseInsensitive = true
+            });
+
+            // Предикат для фильтрации задач
+            bool IsTaskValid(TasksJson.TaskModel task) =>
+                task.Kind != "QUEST" &&
+                task.Status != "FINISHED" &&
+                task.ValidationType == "KEYWORD" ? dataJson?.Tasks?.Any(e => e.Id == task.Id && e.Answer != null) == true : true;
+
+            foreach (var section in respJson)
+            {
+                switch (section.SectionType)
                 {
-                    foreach (var t in task.Tasks)
-                    {
-                        if (t.SubTasks != null)
+                    case "HIGHLIGHTS":
+                        foreach (var task in section.Tasks)
                         {
-                            collectedTasks.AddRange(t.SubTasks);
-                        }
+                            if (task.Status == "FINISHED") continue;
 
-                        if (t.Type != "PARTNER_INTEGRATION" || (t.Type == "PARTNER_INTEGRATION" && t.Reward != null))
+                            if (task.SubTasks != null)
+                            {
+                                collectedTasks.AddRange(task.SubTasks.Where(IsTaskValid));
+                            }
+
+                            if (task.Type != "PARTNER_INTEGRATION" || (task.Type == "PARTNER_INTEGRATION" && task.Reward != null))
+                            {
+                                if (task.Status != "FINISHED")
+                                {
+                                    if (task.ValidationType == "KEYWORD")
+                                    {
+                                        var keyword = dataJson?.Tasks?.Find(e => e.Id == task.Id)?.Answer;
+                                        if (keyword != null)
+                                        {
+                                            collectedTasks.Add(task);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        collectedTasks.Add(task);
+                                    }
+                                }
+                            }
+                        }
+                        break;
+
+                    case "WEEKLY_ROUTINE":
+                        foreach (var task in section.Tasks)
                         {
-                            collectedTasks.Add(t);
+                            collectedTasks.AddRange((task.SubTasks ?? new List<TasksJson.TaskModel>()).Where(IsTaskValid));
                         }
-                    }
-                }
+                        break;
 
-                if (task.SectionType == "WEEKLY_ROUTINE")
-                {
-                    foreach (var t in task.Tasks)
-                    {
-                        collectedTasks.AddRange(t.SubTasks ?? new List<TasksJson.TaskModel>());
-                    }
-                }
+                    case "DEFAULT":
+                        foreach (var subSection in section.SubSections)
+                        {
+                            collectedTasks.AddRange(subSection.Tasks.Where(IsTaskValid));
+                        }
+                        break;
 
-                if (task.SectionType == "DEFAULT")
-                {
-                    foreach (var subSection in task.SubSections)
-                    {
-                        collectedTasks.AddRange(subSection.Tasks);
-                    }
+                    default:
+                        _logger.Warning(($"{_accountName}", ConsoleColor.DarkCyan), ($"Unknown SectionType: {section.SectionType}", null));
+                        break;
                 }
             }
 
@@ -97,7 +132,7 @@ namespace Blum.Core
             }
             catch (Exception ex)
             {
-                _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Claim task error: {ex.Message}", null));
+                _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Claim section error: {ex.Message}", null));
                 return false;
             }
         }
@@ -110,7 +145,7 @@ namespace Blum.Core
             }
             catch (Exception ex)
             {
-                _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Start task error: {ex.Message}", null));
+                _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Start section error: {ex.Message}", null));
             }
         }
 
@@ -128,7 +163,7 @@ namespace Blum.Core
                 var keyword = dataJson?.Tasks?.Find(t => t.Id == taskId)?.Answer;
                 if (keyword == null)
                 {
-                    _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Keyword not found for task {taskId}", null));
+                    _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Keyword not found for section {taskId}", null));
                     return false;
                 }
 
@@ -150,7 +185,7 @@ namespace Blum.Core
             }
             catch (Exception ex)
             {
-                _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Validate task error: {ex.Message}", null));
+                _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Validate section error: {ex.Message}", null));
                 return false;
             }
         }
@@ -161,11 +196,11 @@ namespace Blum.Core
 
             foreach (var task in tasks)
             {
-                if (task.Status == "NOT_STARTED" && task.Type != "PROGRESS_TARGET")
+                if (task.Status == "NOT_STARTED" && task.Type != "PROGRESS_TARGET" && task.Type != "PROGRESS_TASK")
                 {
-                    _logger.Info(($"{_accountName}", ConsoleColor.DarkCyan), ($"Started doing task - '{task.Title}'", null));
+                    _logger.Info(($"{_accountName}", ConsoleColor.DarkCyan), ($"Started doing task/section - '{task.Title}'", null));
                     await StartTaskAsync(task.Id);
-                    await Task.Delay(500);
+                    await Task.Delay(1000);
                 }
             }
 
@@ -182,7 +217,7 @@ namespace Blum.Core
                         var status = await ClaimTaskAsync(task.Id);
                         if (status)
                         {
-                            _logger.Success(($"{_accountName}", ConsoleColor.DarkCyan), ($"Claimed task - '{task.Title}'", null));
+                            _logger.Success(($"{_accountName}", ConsoleColor.DarkCyan), ($"Claimed section - '{task.Title}'", null));
                         }
                         await Task.Delay(500);
                     }
@@ -191,7 +226,7 @@ namespace Blum.Core
                         var status = await ValidateTaskAsync(task.Id, task.Title);
                         if (status)
                         {
-                            _logger.Success(($"{_accountName}", ConsoleColor.DarkCyan), ($"Validated task - '{task.Title}'", null));
+                            _logger.Success(($"{_accountName}", ConsoleColor.DarkCyan), ($"Validated section - '{task.Title}'", null));
                         }
                     }
                 }
