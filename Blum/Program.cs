@@ -1,9 +1,7 @@
 ﻿using Blum.Core;
 using Blum.Models;
 using Blum.Services;
-using Blum.Utilities;
 using System.Reflection;
-using System.Security.Principal;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -15,38 +13,17 @@ internal class Program
 
     private static async Task Main(string[] args)
     {
-        Logger logger = new Logger();
-
         TelegramSettings.TryParseConfig(true);
 
-        AccountService accountManager = new();
-        AccountService.Logger = logger;
+        AppDomain.CurrentDomain.ProcessExit += new EventHandler(FarmingService.OnProcessExit);
+        Console.CancelKeyPress += new ConsoleCancelEventHandler(FarmingService.OnCancelKeyPress);
 
-        var accounts = accountManager.GetAccounts();
-        int accountTotal = accounts.Accounts.Count;
-
-        logger.Info($"Found {accountTotal} sessions.");
-
-        accountManager.ProcessAccountsData(ref accounts);
-        int validAccountsCount = accounts.Accounts.Count;
-
-
-        FakeWebClient fakeWebClient = new();
-        var blumBot = new BlumBot(fakeWebClient, accounts.Accounts[0].Name, accounts.Accounts[0].PhoneNumber, logger, debugMode: false);
-
-        await blumBot.LoginAsync();
-
-        await blumBot.Tasks();
-
-        /*        AppDomain.CurrentDomain.ProcessExit += new EventHandler(FarmingService.OnProcessExit);
-                Console.CancelKeyPress += new ConsoleCancelEventHandler(FarmingService.OnCancelKeyPress);
-
-                if (args.Length == 0)
-                {
-                    await ArgumentParser.ParseArgs(["start-farm"]);
-                    return;
-                }
-                await ArgumentParser.ParseArgs(args);*/
+        if (args.Length == 0)
+        {
+            await ArgumentParser.ParseArgs(["start-farm"]);
+            return;
+        }
+        await ArgumentParser.ParseArgs(args);
     }
 
     public static async Task PrintNewVersionIfAvailable()

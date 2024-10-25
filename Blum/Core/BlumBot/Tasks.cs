@@ -1,10 +1,5 @@
 ﻿using Blum.Models;
 using Blum.Models.Json;
-using Blum.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -12,6 +7,18 @@ namespace Blum.Core
 {
     partial class BlumBot
     {
+        public async Task InitTasksKeywordsDictionaryAsync()
+        {
+            var externalDataResponse = (await _session.TryGetAsync(BlumUrls.PAYLOAD_ENDPOINTS_DATABASE)).ResponseContent ?? "{}";
+
+            var dataJson = JsonSerializer.Deserialize<TasksJson.ExternalTasksData>(externalDataResponse, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            _tasksKeywords = dataJson?.Tasks?.ToDictionary(task => task.Id, task => task.Answer) ?? [];
+        }
+
         public async Task<List<TasksJson.TaskModel>> GetTasksAsync()
         {
             try
@@ -19,100 +26,105 @@ namespace Blum.Core
                 var resp = await _session.TryGetAsync(BlumUrls.GET_TASKS);
                 if (resp.RestResponse?.IsSuccessStatusCode != true)
                 {
-                    _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ("Failed to fetch tasks", null));
-                    return new List<TasksJson.TaskModel>(); // исправление здесь
+                    _logger.Error((_accountName, ConsoleColor.DarkCyan), ("Failed to fetch tasks", null));
+                    return [];
                 }
 
-                var jsonString = resp.ResponseContent;
-
-                var respJson = JsonSerializer.Deserialize<List<TasksJson.TaskResponse>>(jsonString, new JsonSerializerOptions
+                var respJson = JsonSerializer.Deserialize<List<TasksJson.TaskResponse>>(resp.ResponseContent ?? "{}", new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
                 });
 
-                var allTasks = await CollectTasks(respJson);
-                _logger.Info(($"{_accountName}", ConsoleColor.DarkCyan), ($"Collected {allTasks.Count} tasks", null));
+                var allTasks = CollectTasks(respJson);
+
+                _logger.Info((_accountName, ConsoleColor.DarkCyan), ($"Collected {allTasks.Count} tasks", null));
                 return allTasks;
             }
             catch (Exception ex)
             {
-                _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Get tasks error: {ex.Message}", null));
-                return new List<TasksJson.TaskModel>(); // исправление здесь
+                _logger.Error((_accountName, ConsoleColor.DarkCyan), ($"Get tasks error: {ex.Message}", null));
+                return [];
             }
         }
 
-        private async Task<List<TasksJson.TaskModel>> CollectTasks(List<TasksJson.TaskResponse> respJson)
+        private List<TasksJson.TaskModel> CollectTasks(List<TasksJson.TaskResponse> respJson)
         {
-            var collectedTasks = new List<TasksJson.TaskModel>();
-
-            // Получение внешних данных (возможно стоит вынести в отдельный метод и использовать один раз)
-            var externalDataUrl = "https://raw.githubusercontent.com/zuydd/database/main/blum.json";
-            var externalDataResponse = (await _session.TryGetAsync(externalDataUrl)).ResponseContent ?? "{}";
-
-            var dataJson = JsonSerializer.Deserialize<TasksJson.ExternalTasksData>(externalDataResponse, new JsonSerializerOptions
+            if (respJson == null)
             {
-                PropertyNameCaseInsensitive = true
-            });
+                return [];
+            }
 
-            // Предикат для фильтрации задач
-            bool IsTaskValid(TasksJson.TaskModel task) =>
-                task.Kind != "QUEST" &&
-                task.Status != "FINISHED" &&
-                task.ValidationType == "KEYWORD" ? dataJson?.Tasks?.Any(e => e.Id == task.Id && e.Answer != null) == true : true;
+            List<TasksJson.TaskModel> collectedTasks = [];
 
-            foreach (var section in respJson)
+            try
             {
-                switch (section.SectionType)
+                bool IsTaskValid(TasksJson.TaskModel task) =>
+                    task.Kind != "QUEST" &&
+                    task.Status != "FINISHED" &&
+                    task.Type != "PROGRESS_TARGET" &&
+                    (task.ValidationType == "KEYWORD" ? _tasksKeywords?.ContainsKey(task.Id) == true : true);
+
+                foreach (var section in respJson)
                 {
-                    case "HIGHLIGHTS":
-                        foreach (var task in section.Tasks)
-                        {
-                            if (task.Status == "FINISHED") continue;
-
-                            if (task.SubTasks != null)
+                    switch (section.SectionType)
+                    {
+                        case "HIGHLIGHTS":
+                            foreach (var task in section.Tasks)
                             {
-                                collectedTasks.AddRange(task.SubTasks.Where(IsTaskValid));
-                            }
+                                if (task.Status == "FINISHED" || task.Kind == "QUEST") continue;
 
-                            if (task.Type != "PARTNER_INTEGRATION" || (task.Type == "PARTNER_INTEGRATION" && task.Reward != null))
-                            {
-                                if (task.Status != "FINISHED")
+                                if (task.SubTasks != null)
                                 {
-                                    if (task.ValidationType == "KEYWORD")
+                                    collectedTasks.AddRange(task.SubTasks.Where(IsTaskValid));
+                                }
+
+                                if (task.Type != "PARTNER_INTEGRATION" || (task.Type == "PARTNER_INTEGRATION" && task.Reward != null))
+                                {
+                                    if (task.Status != "FINISHED")
                                     {
-                                        var keyword = dataJson?.Tasks?.Find(e => e.Id == task.Id)?.Answer;
-                                        if (keyword != null)
+                                        if (task.ValidationType == "KEYWORD")
+                                        {
+                                            _tasksKeywords.TryGetValue(task.Id, out var keyword);
+
+                                            if (keyword != null)
+                                            {
+                                                collectedTasks.Add(task);
+                                            }
+                                        }
+                                        else
                                         {
                                             collectedTasks.Add(task);
                                         }
                                     }
-                                    else
-                                    {
-                                        collectedTasks.Add(task);
-                                    }
                                 }
                             }
-                        }
-                        break;
+                            break;
 
-                    case "WEEKLY_ROUTINE":
-                        foreach (var task in section.Tasks)
-                        {
-                            collectedTasks.AddRange((task.SubTasks ?? new List<TasksJson.TaskModel>()).Where(IsTaskValid));
-                        }
-                        break;
+                        case "WEEKLY_ROUTINE":
+                            foreach (var task in section.Tasks)
+                            {
+                                if (task.Status == "FINISHED" || task.Kind == "QUEST") continue;
 
-                    case "DEFAULT":
-                        foreach (var subSection in section.SubSections)
-                        {
-                            collectedTasks.AddRange(subSection.Tasks.Where(IsTaskValid));
-                        }
-                        break;
+                                collectedTasks.AddRange((task.SubTasks ?? []).Where(IsTaskValid));
+                            }
+                            break;
 
-                    default:
-                        _logger.Warning(($"{_accountName}", ConsoleColor.DarkCyan), ($"Unknown SectionType: {section.SectionType}", null));
-                        break;
+                        case "DEFAULT":
+                            foreach (var subSection in section.SubSections)
+                            {
+                                collectedTasks.AddRange(subSection.Tasks.Where(IsTaskValid));
+                            }
+                            break;
+
+                        default:
+                            _logger.Warning((_accountName, ConsoleColor.DarkCyan), ($"Unknown SectionType: {section.SectionType}", null));
+                            break;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error((_accountName, ConsoleColor.DarkCyan), ($"Start section error: {ex.Message}", null));
             }
 
             return collectedTasks;
@@ -132,7 +144,7 @@ namespace Blum.Core
             }
             catch (Exception ex)
             {
-                _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Claim section error: {ex.Message}", null));
+                _logger.Error((_accountName, ConsoleColor.DarkCyan), ($"Claim section error: {ex.Message}", null));
                 return false;
             }
         }
@@ -145,25 +157,19 @@ namespace Blum.Core
             }
             catch (Exception ex)
             {
-                _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Start section error: {ex.Message}", null));
+                _logger.Error((_accountName, ConsoleColor.DarkCyan), ($"Start section error: {ex.Message}", null));
             }
         }
 
-        public async Task<bool> ValidateTaskAsync(string taskId, string title)
+        public async Task<bool> ValidateTaskAsync(string taskId)
         {
             try
             {
-                var externalDataUrl = "https://raw.githubusercontent.com/zuydd/database/main/blum.json";
-                var externalDataResponse = (await _session.TryGetAsync(externalDataUrl)).ResponseContent ?? "{}";
-                var dataJson = JsonSerializer.Deserialize<TasksJson.ExternalTasksData>(externalDataResponse, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                _tasksKeywords.TryGetValue(taskId, out var keyword);
 
-                var keyword = dataJson?.Tasks?.Find(t => t.Id == taskId)?.Answer;
                 if (keyword == null)
                 {
-                    _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Keyword not found for section {taskId}", null));
+                    _logger.Error((_accountName, ConsoleColor.DarkCyan), ($"Keyword not found for section {taskId}", null));
                     return false;
                 }
 
@@ -185,24 +191,34 @@ namespace Blum.Core
             }
             catch (Exception ex)
             {
-                _logger.Error(($"{_accountName}", ConsoleColor.DarkCyan), ($"Validate section error: {ex.Message}", null));
+                _logger.Error((_accountName, ConsoleColor.DarkCyan), ($"Validate section error: {ex.Message}", null));
                 return false;
             }
         }
 
-        public async Task Tasks()
+        public async Task ProcessAndCompleteAvailableTasksAsync()
         {
+            await InitTasksKeywordsDictionaryAsync();
+
             var tasks = await GetTasksAsync();
+
+            if (tasks.Count == 0)
+            {
+                _logger.Info((_accountName, ConsoleColor.DarkCyan), ("No available tasks were found.", null));
+                return;
+            }
 
             foreach (var task in tasks)
             {
                 if (task.Status == "NOT_STARTED" && task.Type != "PROGRESS_TARGET" && task.Type != "PROGRESS_TASK")
                 {
-                    _logger.Info(($"{_accountName}", ConsoleColor.DarkCyan), ($"Started doing task/section - '{task.Title}'", null));
+                    _logger.Info((_accountName, ConsoleColor.DarkCyan), ($"Started doing task/section - '{task.Title}'", null));
                     await StartTaskAsync(task.Id);
                     await Task.Delay(1000);
                 }
             }
+
+            _logger.Info((_accountName, ConsoleColor.DarkCyan), ("Waiting for 5 seconds...", null));
 
             await Task.Delay(5000);
 
@@ -217,16 +233,16 @@ namespace Blum.Core
                         var status = await ClaimTaskAsync(task.Id);
                         if (status)
                         {
-                            _logger.Success(($"{_accountName}", ConsoleColor.DarkCyan), ($"Claimed section - '{task.Title}'", null));
+                            _logger.Success((_accountName, ConsoleColor.DarkCyan), ($"Claimed section - '{task.Title}'", null));
                         }
-                        await Task.Delay(500);
+                        await Task.Delay(1000);
                     }
                     else if (task.Status == "READY_FOR_VERIFY" && task.ValidationType == "KEYWORD")
                     {
-                        var status = await ValidateTaskAsync(task.Id, task.Title);
+                        var status = await ValidateTaskAsync(task.Id);
                         if (status)
                         {
-                            _logger.Success(($"{_accountName}", ConsoleColor.DarkCyan), ($"Validated section - '{task.Title}'", null));
+                            _logger.Success((_accountName, ConsoleColor.DarkCyan), ($"Validated section - '{task.Title}'", null));
                         }
                     }
                 }

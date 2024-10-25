@@ -1,20 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Blum.Models.Json
+﻿namespace Blum.Models.Json
 {
-    /*    public class Highlights
-        {
-            public string? Id { get; set; }
-
-            public string? ValidationType { get; set; }
-
-            public string? Status { get; set; }
-        }
-    */
     public class TasksJson
     {
         public class TaskResponse
@@ -31,29 +16,29 @@ namespace Blum.Models.Json
             public string Type { get; set; }
             public string Status { get; set; }
             public string ValidationType { get; set; }
-            public string IconFileKey { get; set; }
-            public string BannerFileKey { get; set; }
+            // public string IconFileKey { get; set; }
+            // public string BannerFileKey { get; set; }
             public string Title { get; set; }
-            public string ProductName { get; set; }
-            public string Description { get; set; }
+            // public string ProductName { get; set; }
+            // public string Description { get; set; }
             public string Reward { get; set; }
-            public SocialSubscription SocialSubscription { get; set; }
-            public bool IsHidden { get; set; }
-            public bool IsDisclaimerRequired { get; set; }
+            // public SocialSubscription SocialSubscription { get; set; }
+            // public bool IsHidden { get; set; }
+            // public bool IsDisclaimerRequired { get; set; }
             public List<TaskModel> SubTasks { get; set; }
         }
 
         public class SubSection
         {
-            public string Title { get; set; }
+            // public string Title { get; set; }
             public List<TaskModel> Tasks { get; set; }
         }
 
-        public class SocialSubscription
-        {
-            public bool OpenInTelegram { get; set; }
-            public string Url { get; set; }
-        }
+        /* public class SocialSubscription
+         {
+             public bool OpenInTelegram { get; set; }
+             public string Url { get; set; }
+         }*/
 
         public class ResponseStatus
         {
@@ -71,7 +56,5 @@ namespace Blum.Models.Json
             public string Answer { get; set; }
         }
     }
-
-
 
 }

@@ -99,6 +99,7 @@ namespace Blum.Services
 
             bool exitFlag = false;
             bool playedGameIn8h = false;
+            bool processedTasksIn8h = false;
 
             try
             {
@@ -176,6 +177,13 @@ namespace Blum.Services
 
                                         maxTries--;
                                     }
+
+                                    else if (TelegramSettings.ShouldCompleteTasks && !processedTasksIn8h)
+                                    {
+                                        await blumBot.ProcessAndCompleteAvailableTasksAsync();
+                                        processedTasksIn8h = true;
+                                    }
+
                                     else if (endTime != null && timestamp != null)
                                     {
                                         long sleepTimeSeconds = endTime - timestamp ?? 0;
@@ -198,6 +206,7 @@ namespace Blum.Services
 
                                         await Task.Delay(milliseconds);
                                         playedGameIn8h = false;
+                                        processedTasksIn8h = false;
 
                                         if (!await blumBot.RefreshUsingTokenAsync())
                                         {

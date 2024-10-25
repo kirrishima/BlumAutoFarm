@@ -17,6 +17,7 @@ namespace Blum.Core
         protected string _refreshToken;
         protected Logger _logger;
         protected WTelegramLogger WTelegramLogger;
+        protected Dictionary<string, string> _tasksKeywords = [];
 
         private static readonly object _configLock = new();
         private static readonly object _disposeLock = new();
