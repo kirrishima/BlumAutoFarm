@@ -1,6 +1,7 @@
 ﻿using Blum.Models;
 using Blum.Models.Json;
 using Blum.Utilities;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using static Blum.Utilities.RandomUtility.Random;
 
@@ -124,7 +125,10 @@ namespace Blum.Core
 
             if (payload is not null)
             {
-                var jsonData = JsonSerializer.Serialize(new { payload });
+                var jsonData = JsonSerializer.Serialize(new { payload }, new JsonSerializerOptions
+                {
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                });
 
                 var result = await _session.TryPostAsync(BlumUrls.GAME_CLAIM, jsonData);
                 if (result.restResponse?.IsSuccessStatusCode != true)
@@ -170,11 +174,29 @@ namespace Blum.Core
 
         protected async Task<string?> CreatePayloadAsync(string gameID, int points, int dogs = 0)
         {
-            BlumGameJson data = new()
+
+            int freeze = points / 50 + (int)Random.Shared.NextDouble() * 2; // e.g, if points are 210, then FREEZE is from 4 to 6
+            int bombs = points < 150 ? (int)Random.Shared.NextDouble() * 2 : 0; // if points are lower than 150, will add from 0 to 2 bombs clicked
+
+            BlumPayloadJson data = new()
             {
-                GameId = gameID,
-                Points = points,
-                DogsPoints = dogs
+                GameId = "ad7cd4cd-29d1-4548-89a3-91301996ef31",
+                /*                Challenge = new Challenge
+                                {
+                                    Id = "a9a6fdff-69c5-43a3-8bb7-fdf0f875766f",
+                                    Nonce = 74114,
+                                    Hash = "00001976638fc4d4aea3cdcbeaae2b17eb99306c814dc7e78e89ef448a1895ff"
+                                },*/
+                EarnedPoints = new EarnedPoints
+                {
+                    BP = new Point { Amount = points }
+                },
+                AssetClicks = new Dictionary<string, AssetClick>
+                {
+                    { "CLOVER", new AssetClick { Clicks = points } },
+                    { "FREEZE", new AssetClick { Clicks = freeze} },
+                    { "BOMB", new AssetClick { Clicks = bombs } },
+                }
             };
 
             var jsonData = JsonSerializer.Serialize(data);
@@ -186,45 +208,31 @@ namespace Blum.Core
 
             ErrorResponse? errorResponse = null;
 
-            do
+            var (restResponse, responseContent, exception) = await _session.TryPostAsync(TelegramSettings.PayloadServer, jsonData); // Hosting local server for generating payloads
+
+            Console.WriteLine(restResponse?.Content);
+            /*          
+             Console.WriteLine(responseContent);
+                      Console.WriteLine(exception);
+            */
+
+            if (restResponse?.IsSuccessStatusCode == true)
             {
-                string server;
+                //using JsonDocument doc = JsonDocument.Parse(responseContent ?? "");
+                /*                if (doc.RootElement.TryGetProperty("payload", out JsonElement value))
+                                {
+                                    Console.WriteLine("\n\n");
+                                    Console.WriteLine(value.ToString());
+                                    return value.GetString();
+                                }*/
+                var s = JsonSerializer.Deserialize<PayloadServerResponseJson>(responseContent);
 
-                lock (_listLock)
-                {
-                    var servers = PayloadServersIDList;
-
-                    if (!servers.Any())
-                    {
-                        /*throw new Exceptions.BlumFatalError("No servers for getting payload available. Can't claim game's rewards.");*/
-                        return null;
-                    }
-
-                    server = GetRandomElement(servers);
-                }
-
-                var (restResponse, responseContent, exception) = await _session.TryPostAsync(BlumUrls.GetGameClaimPayloadURL(server), jsonData);
-
-                errorResponse = JsonSerializer.Deserialize<ErrorResponse>(responseContent ?? "{}", options);
-
-                if (errorResponse?.Error != null || exception != null)
-                {
-                    RemoveElement(server);
-                }
-                else
-                {
-                    if (restResponse?.IsSuccessStatusCode == true)
-                    {
-                        using JsonDocument doc = JsonDocument.Parse(responseContent ?? "");
-                        if (doc.RootElement.TryGetProperty("payload", out JsonElement value))
-                        {
-                            return value.GetString();
-                        }
-                    }
-                }
+                Console.WriteLine();
+                Console.WriteLine(s?.Payload);
+                return s?.Payload;
             }
-            while (true);
-        }
 
+            return "";
+        }
     }
 }
