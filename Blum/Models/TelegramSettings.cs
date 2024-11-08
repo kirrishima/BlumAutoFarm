@@ -23,11 +23,14 @@ namespace Blum.Models
 
         private static readonly (int Min, int Max) DefaultPointsRange = (180, 220);
         private static readonly int DefaultMaxPlays = 14;
+        public static string? PayloadServer { get; set; }
 
-        public static (int Min, int Max) PointsRange = DefaultPointsRange;
-        public static int MaxPlays = DefaultMaxPlays;
+        public static (int Min, int Max) PointsRange { get; set; } = DefaultPointsRange;
 
-        //private static readonly ;
+        public static int MaxPlays { get; set; } = DefaultMaxPlays;
+
+        public static bool ShouldCompleteTasks { get; set; } = false;
+
         private static readonly JsonSerializerOptions options = new()
         {
             WriteIndented = true
@@ -80,6 +83,8 @@ namespace Blum.Models
 
                         MaxPlays = settings.farmingSettings.MaxPlays;
                         PointsRange = (minPoints, maxPoints);
+                        ShouldCompleteTasks = settings.farmingSettings.ShouldCompleteTasks;
+                        PayloadServer = settings.farmingSettings?.PayloadServer;
                     }
                 }
                 catch (JsonException)
@@ -169,6 +174,9 @@ namespace Blum.Models
                             MaxPlays = settings.farmingSettings.MaxPlays;
                             PointsRange = (settings.farmingSettings.PointsRange[0], settings.farmingSettings.PointsRange[1]);
                         }
+
+                        ShouldCompleteTasks = settings.farmingSettings.ShouldCompleteTasks;
+                        PayloadServer = settings.farmingSettings?.PayloadServer;
                     }
                     return areApiSettingsValid && areFarmingSettingsValid;
                 }
@@ -266,6 +274,12 @@ namespace Blum.Models
         {
             public class FarmingSettings
             {
+                [JsonPropertyName("complete_tasks")]
+                public bool ShouldCompleteTasks { get; set; } = false;
+
+                [JsonPropertyName("payload_server")]
+                public string PayloadServer { get; set; } = "https://blum-payload-generator.vercel.app/api/generate";
+
                 [JsonPropertyName("max_plays")]
                 public int MaxPlays { get; set; } = DefaultMaxPlays;
 

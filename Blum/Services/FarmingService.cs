@@ -9,9 +9,10 @@ namespace Blum.Services
 {
     internal class FarmingService
     {
-        private static readonly string _logFilePath;
+        private static bool _initializedSW = false;
+        private static string? _logFilePath;
         internal static readonly object _consoleLock = new object();
-        private static readonly StreamWriter logFileStreamWriter;
+        private static StreamWriter? logFileStreamWriter;
         private static bool _disposed = false;
 
         private static readonly Logger logger = new(
@@ -24,22 +25,26 @@ namespace Blum.Services
                 }
             });
 
-        static FarmingService()
+        private static void InitStreamWriter()
         {
-            _logFilePath = AppFilepaths.LogsFilePath;
-            AppFilepaths.EnsureDirectories(_logFilePath);
-            File.Create(_logFilePath).Close();
-            logFileStreamWriter = new StreamWriter(_logFilePath, append: false, encoding: Encoding.UTF8, bufferSize: 1024);
+            if (!_initializedSW)
+            {
+                _initializedSW = true;
+                _logFilePath = AppFilepaths.LogsFilePath;
+                AppFilepaths.EnsureDirectories(_logFilePath);
+                File.Create(_logFilePath).Close();
+                logFileStreamWriter = new StreamWriter(_logFilePath, append: false, encoding: Encoding.UTF8, bufferSize: 1024);
+            }
         }
 
         internal static void OnProcessExit(object sender, EventArgs e)
         {
             lock (_consoleLock)
             {
-                if (!_disposed)
+                if (!_disposed && _initializedSW)
                 {
-                    logFileStreamWriter.Flush();
-                    logFileStreamWriter.Dispose();
+                    logFileStreamWriter?.Flush();
+                    logFileStreamWriter?.Dispose();
                     _disposed = true;
                 }
             }
@@ -55,6 +60,7 @@ namespace Blum.Services
         public static async Task AutoStartBlumFarming()
         {
             await Program.PrintNewVersionIfAvailable();
+            InitStreamWriter();
 
             try
             {
@@ -80,10 +86,7 @@ namespace Blum.Services
             catch (Exception ex)
             {
                 logger.Error(ex.Message);
-                if (ex.InnerException != null)
-                {
-                    logger.Error(ex.InnerException.Message);
-                }
+                logger.PrintAllExeceptionsData(ex.InnerException);
             }
         }
 
@@ -93,6 +96,7 @@ namespace Blum.Services
 
             bool exitFlag = false;
             bool playedGameIn8h = false;
+            bool processedTasksIn8h = false;
 
             try
             {
@@ -170,6 +174,13 @@ namespace Blum.Services
 
                                         maxTries--;
                                     }
+
+                                    else if (TelegramSettings.ShouldCompleteTasks && !processedTasksIn8h)
+                                    {
+                                        await blumBot.ProcessAndCompleteAvailableTasksAsync();
+                                        processedTasksIn8h = true;
+                                    }
+
                                     else if (endTime != null && timestamp != null)
                                     {
                                         long sleepTimeSeconds = endTime - timestamp ?? 0;
@@ -183,7 +194,7 @@ namespace Blum.Services
 
                                         lock (_consoleLock)
                                         {
-                                            logFileStreamWriter.FlushAsync().Wait();
+                                            logFileStreamWriter?.FlushAsync().Wait();
                                         }
 
                                         maxTries++;
@@ -192,6 +203,7 @@ namespace Blum.Services
 
                                         await Task.Delay(milliseconds);
                                         playedGameIn8h = false;
+                                        processedTasksIn8h = false;
 
                                         if (!await blumBot.RefreshUsingTokenAsync())
                                         {
@@ -213,16 +225,13 @@ namespace Blum.Services
                                 catch (Exception ex)
                                 {
                                     logger.Error((account, ConsoleColor.DarkCyan), ($"Error in farming management: {ex.Message}", null));
-                                    if (ex.InnerException != null)
-                                    {
-                                        logger.Error((account, ConsoleColor.DarkCyan), ($"Error in farming management: {ex.InnerException.Message}", null));
-                                    }
+                                    logger.PrintAllExeceptionsData(ex.InnerException);
                                 }
                                 finally
                                 {
                                     lock (_consoleLock)
                                     {
-                                        logFileStreamWriter.FlushAsync().Wait();
+                                        logFileStreamWriter?.FlushAsync().Wait();
                                     }
                                 }
                                 await Task.Delay(TimeSpan.FromSeconds(10));
@@ -236,16 +245,13 @@ namespace Blum.Services
                             catch (Exception ex)
                             {
                                 logger.Error((account, ConsoleColor.DarkCyan), ($"Error: {ex.Message}", null));
-                                if (ex.InnerException != null)
-                                {
-                                    logger.Error((account, ConsoleColor.DarkCyan), ($"Error: {ex.InnerException.Message}", null));
-                                }
+                                logger.PrintAllExeceptionsData(ex.InnerException);
                             }
                             finally
                             {
                                 lock (_consoleLock)
                                 {
-                                    logFileStreamWriter.FlushAsync().Wait();
+                                    logFileStreamWriter?.FlushAsync().Wait();
                                 }
                             }
                         }
@@ -259,16 +265,13 @@ namespace Blum.Services
                     catch (Exception ex)
                     {
                         logger.Error((account, ConsoleColor.DarkCyan), ($"Session error:  {ex.Message}", null));
-                        if (ex.InnerException != null)
-                        {
-                            logger.Error((account, ConsoleColor.DarkCyan), ($"Session error: {ex.InnerException.Message}", null));
-                        }
+                        logger.PrintAllExeceptionsData(ex.InnerException);
                     }
                     finally
                     {
                         lock (_consoleLock)
                         {
-                            logFileStreamWriter.FlushAsync().Wait();
+                            logFileStreamWriter?.FlushAsync().Wait();
                         }
                         if (!exitFlag)
                         {
@@ -289,16 +292,13 @@ namespace Blum.Services
             catch (Exception ex)
             {
                 logger.Error((account, ConsoleColor.DarkCyan), ($"Error: {ex.Message}", null));
-                if (ex.InnerException != null)
-                {
-                    logger.Error((account, ConsoleColor.DarkCyan), ($"Error: {ex.InnerException.Message}", null));
-                }
+                logger.PrintAllExeceptionsData(ex.InnerException);
             }
             finally
             {
                 lock (_consoleLock)
                 {
-                    logFileStreamWriter.FlushAsync().Wait();
+                    logFileStreamWriter?.FlushAsync().Wait();
                 }
             }
         }

@@ -32,6 +32,15 @@
         /// <summary> https://raw.githubusercontent.com/zuydd/database/main/blum.json </summary>
         public static readonly string PAYLOAD_ENDPOINTS_DATABASE = "https://raw.githubusercontent.com/zuydd/database/main/blum.json";
 
+        /// <summary> https://earn-domain.blum.codes/api/v1/tasks /// </summary>
+        public static readonly string GET_TASKS = "https://earn-domain.blum.codes/api/v1/tasks";
+
+        public static string GetTaskClaimUrl(string taskId) => $"https://earn-domain.blum.codes/api/v1/tasks/{taskId}/claim";
+
+        public static string GetTaskStartUrl(string taskId) => $"https://earn-domain.blum.codes/api/v1/tasks/{taskId}/start";
+
+        public static string GetTaskValidateUrl(string taskId) => $"https://earn-domain.blum.codes/api/v1/tasks/{taskId}/validate";
+
         public static string GetGameClaimPayloadURL(string payloadServerID)
         {
             return $"https://{payloadServerID}.vercel.app/api/blum";

@@ -68,7 +68,7 @@ namespace Blum.Core
 
         public void AddElement(string element)
         {
-            lock (listLock)
+            lock (_listLock)
             {
                 if (!PayloadServersIDList.Contains(element))
                 {
@@ -79,7 +79,7 @@ namespace Blum.Core
 
         public void RemoveElement(string element)
         {
-            lock (listLock)
+            lock (_listLock)
             {
                 if (PayloadServersIDList.Contains(element))
                 {
