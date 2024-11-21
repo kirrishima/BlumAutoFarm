@@ -1,6 +1,19 @@
 # Blum Core Command Line Interface
 
-The Blum Core CLI is a command-line tool for managing and interacting with the Blum farming service. It allows you to configure API credentials, manage accounts, and start the farming process.
+<div align="center"><img src="https://github.com/user-attachments/assets/67c0e919-574c-4c3f-9a14-8b79fbcf7cc1"></div>
+
+**The Blum Core CLI is a command-line tool for managing and interacting with the Blum farming service. It allows you to configure API credentials, manage accounts, and start the farming process.**
+
+## What this bot can?
+
+- ✅ Multi accounts
+- ✅ Collect farm reward
+- ✅ Collect daily reward
+- ✅ Play drop games
+- ❌ Collect dogs coins in drop game
+- ✅ Complete social tasks
+- ✅ Verify youtube vids tasks
+- ✅ Write logs
 
 ## Table of Contents
 - [Quickstart](#quickstart)
