@@ -118,9 +118,13 @@ namespace Blum.Services
                             try
                             {
                                 await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
-                                var msg = await blumBot.ClaimDailyRewardAsync();
-                                if (msg.Item1)
-                                    logger.Info((account, ConsoleColor.DarkCyan), ($"Claimed daily reward! {msg.Item2}", null));
+
+                                if (await blumBot.IsClaimDailyRewardAwailableAsync())
+                                {
+                                    var msg = await blumBot.ClaimDailyRewardAsync();
+                                    if (msg.Item1)
+                                        logger.Info((account, ConsoleColor.DarkCyan), ($"Claimed daily reward! {msg.Item2}", null));
+                                }
 
                                 await Task.Delay(RandomDelayMilliseconds(Delay.BeforeRequest));
 

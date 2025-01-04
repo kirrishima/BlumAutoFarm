@@ -7,34 +7,52 @@ namespace Blum.Core
 {
     internal partial class BlumBot
     {
+        public async Task<bool> IsClaimDailyRewardAwailableAsync()
+        {
+            var response = await _session.TryGetAsync(BlumUrls.CLAIM_DAILY_REWARD);
+
+            if (response.Exception != null || string.IsNullOrWhiteSpace(response.ResponseContent))
+            {
+                return false;
+            }
+
+            var json = JsonSerializer.Deserialize<BlumDailyRewardJson>(response.ResponseContent);
+
+            if (json == null || json.Claim == "unavailable")
+            {
+                return false;
+            }
+
+            return true;
+        }
         public async Task<(bool, string?)> ClaimDailyRewardAsync()
         {
             _logger.Debug(Logger.LogMessageType.Warning, messages: ("ClaimDailyRewardAsync()", null));
             string? responseText = null;
             try
             {
-                var response = await _session.TryGetAsync(BlumUrls.CLAIM_DAILY_REWARD);
+                var response = await _session.TryPostAsync(BlumUrls.CLAIM_DAILY_REWARD);
 
-                var json = response.ResponseContent;
+                var json = response.responseContent;
                 var res = JsonSerializer.Deserialize<BlumDailyRewardJson>(json ?? "{}");
                 string reward;
 
                 try
                 {
-                    reward = $"Day: {res?.Days[1].Ordinal}; Passes: {res?.Days[1].Reward.Passes}; Points: {res?.Days[1].Reward.Points}";
+                    reward = $"Day: {res?.CurrentStreakDays}; Passes: {res?.TodayRewards?.Passes}; Points: {res?.TodayRewards?.Points}";
                 }
                 catch (Exception)
                 {
                     reward = string.Empty;
                 }
 
-                if (response.RestResponse?.IsSuccessStatusCode == true)
+                if (response.restResponse?.IsSuccessStatusCode != true)
                 {
                     await Task.Delay(1000);
                     response = await _session.TryPostAsync(BlumUrls.CLAIM_DAILY_REWARD);
                 }
-                responseText = response.ResponseContent;
-                return responseText == "OK" ? (true, reward) : (false, responseText);
+                responseText = response.responseContent;
+                return res?.Claimed == true ? (true, reward) : (false, responseText);
             }
             catch (Exception)
             {

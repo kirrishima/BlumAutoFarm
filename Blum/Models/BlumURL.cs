@@ -27,7 +27,7 @@
         public static readonly string REFRESH = "https://user-domain.blum.codes/api/v1/auth/refresh";
 
         /// <summary>https://game-domain.blum.codes/api/v1/daily-reward?offset=-180</summary>
-        public static readonly string CLAIM_DAILY_REWARD = "https://game-domain.blum.codes/api/v1/daily-reward?offset=-180";
+        public static readonly string CLAIM_DAILY_REWARD = "https://game-domain.blum.codes/api/v2/daily-reward";
 
         /// <summary> https://raw.githubusercontent.com/zuydd/database/main/blum.json </summary>
         public static readonly string PAYLOAD_ENDPOINTS_DATABASE = "https://raw.githubusercontent.com/zuydd/database/main/blum.json";

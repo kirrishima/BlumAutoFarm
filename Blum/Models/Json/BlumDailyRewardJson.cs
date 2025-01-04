@@ -4,26 +4,26 @@ namespace Blum.Models.Json
 {
     public class BlumDailyRewardJson
     {
-        public class Day
+        [JsonPropertyName("claim")]
+        public string? Claim { get; set; } = null;
+
+        [JsonPropertyName("claimed")]
+        public bool Claimed { get; set; } = false;
+
+        [JsonPropertyName("currentStreakDays")]
+        public int? CurrentStreakDays { get; set; } = null;
+
+        [JsonPropertyName("todayReward")]
+        public TodayReward? TodayRewards { get; set; } = null;
+
+        public class TodayReward
         {
-            public class Rewards
-            {
-                [JsonPropertyName("passes")]
-                public int? Passes { get; set; } = null;
+            [JsonPropertyName("points")]
+            public string? Points { get; set; } = null;
 
-                [JsonPropertyName("points")]
-                public string? Points { get; set; } = null;
-            }
-
-            [JsonPropertyName("ordinal")]
-            public int? Ordinal { get; set; } = null;
-
-            [JsonPropertyName("reward")]
-            public Rewards Reward { get; set; } = new Rewards();
+            [JsonPropertyName("passes")]
+            public int? Passes { get; set; } = null;
         }
-
-        [JsonPropertyName("days")]
-        public List<Day> Days { get; set; } = new List<Day>();
     }
 }
 
